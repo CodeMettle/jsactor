@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectCodeStyleSettingsManager">
+    <option name="PER_PROJECT_SETTINGS">
+      <value>
+        <option name="WRAP_COMMENTS" value="true" />
+        <ScalaCodeStyleSettings>
+          <option name="importLayout">
+            <array>
+              <option value="java" />
+              <option value="_______ blank line _______" />
+              <option value="all other imports" />
+              <option value="_______ blank line _______" />
+              <option value="com.codemettle" />
+              <option value="_______ blank line _______" />
+              <option value="akka" />
+              <option value="jsactor" />
+              <option value="scala" />
+            </array>
+          </option>
+          <option name="REPLACE_CASE_ARROW_WITH_UNICODE_CHAR" value="true" />
+          <option name="REPLACE_MAP_ARROW_WITH_UNICODE_CHAR" value="true" />
+          <option name="REPLACE_FOR_GENERATOR_ARROW_WITH_UNICODE_CHAR" value="true" />
+        </ScalaCodeStyleSettings>
+        <XML>
+          <option name="XML_LEGACY_SETTINGS_IMPORTED" value="true" />
+        </XML>
+        <codeStyleSettings language="ECMA Script Level 4">
+          <option name="WRAP_COMMENTS" value="true" />
+          <option name="PARENT_SETTINGS_INSTALLED" value="true" />
+        </codeStyleSettings>
+        <codeStyleSettings language="JavaScript">
+          <option name="WRAP_COMMENTS" value="true" />
+          <option name="PARENT_SETTINGS_INSTALLED" value="true" />
+        </codeStyleSettings>
+        <codeStyleSettings language="Scala">
+          <option name="CALL_PARAMETERS_WRAP" value="1" />
+          <option name="METHOD_PARAMETERS_WRAP" value="1" />
+          <option name="WRAP_LONG_LINES" value="true" />
+        </codeStyleSettings>
+        <codeStyleSettings language="TypeScript">
+          <option name="WRAP_COMMENTS" value="true" />
+          <option name="PARENT_SETTINGS_INSTALLED" value="true" />
+        </codeStyleSettings>
+      </value>
+    </option>
+    <option name="USE_PER_PROJECT_SETTINGS" value="true" />
+  </component>
+</project>

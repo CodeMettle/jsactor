@@ -1,0 +1,9 @@
+<component name="CopyrightManager">
+  <copyright>
+    <option name="notice" value="&amp;#36;file.fileName&#10;&#10;Updated: &amp;#36;today.format(&quot;MMM d, yyyy&quot;)&#10;&#10;Copyright (c) &amp;#36;today.year, CodeMettle" />
+    <option name="keyword" value="Copyright" />
+    <option name="allowReplaceKeyword" value="CodeMettle" />
+    <option name="myName" value="CodeMettle" />
+    <option name="myLocal" value="true" />
+  </copyright>
+</component>

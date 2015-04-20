@@ -1,0 +1,35 @@
+logs
+project/project
+project/target
+target
+tmp
+.history
+dist
+/out
+/RUNNING_PID
+.DS_Store
+
+# hidden cross project folders
+shared/.js
+shared/.jvm
+
+# temp files
+.~*
+*~
+*.orig
+
+# eclipse
+.classpath
+.settings
+.project
+.scala_dependencies
+.buildpath
+.cache
+.target
+bin/
+
+#idea
+.idea
+*.iml
+.idea_modules
+atlassian-ide-plugin.xml
