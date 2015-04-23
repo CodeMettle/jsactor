@@ -10,8 +10,8 @@ dist
 .DS_Store
 
 # hidden cross project folders
-shared/.js
-shared/.jvm
+jsactor-bridge-shared/.js
+jsactor-bridge-shared/.jvm
 
 # temp files
 .~*
