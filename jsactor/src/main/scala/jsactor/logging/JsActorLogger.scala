@@ -12,9 +12,9 @@ package jsactor.logging
  *
  */
 trait JsActorLogger {
-  def trace(msg: Any*): Unit
-  def debug(msg: Any*): Unit
-  def info(msg: Any*): Unit
-  def warn(msg: Any*): Unit
-  def error(msg: Any*): Unit
+  def trace(msg: Any, addl: Any*): Unit
+  def debug(msg: Any, addl: Any*): Unit
+  def info(msg: Any, addl: Any*): Unit
+  def warn(msg: Any, addl: Any*): Unit
+  def error(msg: Any, addl: Any*): Unit
 }

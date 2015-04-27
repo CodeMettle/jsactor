@@ -35,7 +35,7 @@ val commonSettings: Seq[Setting[_]] = releaseSettings ++ Seq(
 lazy val root = project in file(".") settings (commonSettings ++ Seq(
   publishArtifact := false,
   publishArtifact in Compile := false
-)) aggregate (jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient)
+)) aggregate (jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient, jsactorLoglevel)
 
 lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
   name := "jsactor",
@@ -66,3 +66,8 @@ lazy val bridgeServer = project in file("jsactor-bridge-server") settings (commo
 lazy val bridgeClient = project in file("jsactor-bridge-client") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-client"
 )) dependsOn (sharedJS, jsactor) enablePlugins ScalaJSPlugin
+
+lazy val jsactorLoglevel = project in file("jsactor-loglevel") settings (commonSettings ++ Seq(
+  name := "jsactor-loglevel",
+  libraryDependencies += "com.codemettle.scalajs" %%% "loglevel" % "1.0.0"
+)) dependsOn jsactor enablePlugins ScalaJSPlugin

@@ -15,15 +15,19 @@ import jsactor.logging.{JsActorLogger, JsActorLoggerFactory}
  */
 object JsPrintlnActorLoggerFactory extends JsActorLoggerFactory {
   private val printlnLogger = new JsActorLogger {
-    override def warn(msg: Any*): Unit = println("[warn] " + msg.mkString(" "))
+    private def doLog(prefix: String, msg: Any, addl: Any*) = {
+      println(s"[$prefix] $msg" + (if (addl.isEmpty) "" else addl.mkString(" ", " ", "")))
+    }
 
-    override def error(msg: Any*): Unit = println("[error] " + msg.mkString(" "))
+    override def warn(msg: Any, addl: Any*): Unit = doLog("warn", msg, addl)
 
-    override def debug(msg: Any*): Unit = println("[debug] " + msg.mkString(" "))
+    override def error(msg: Any, addl: Any*): Unit = doLog("error", msg, addl)
 
-    override def trace(msg: Any*): Unit = println("[trace] " + msg.mkString(" "))
+    override def debug(msg: Any, addl: Any*): Unit = doLog("debug", msg, addl)
 
-    override def info(msg: Any*): Unit = println("[info] " + msg.mkString(" "))
+    override def trace(msg: Any, addl: Any*): Unit = doLog("trace", msg, addl)
+
+    override def info(msg: Any, addl: Any*): Unit = doLog("info", msg, addl)
   }
 
   override def getLogger(name: String): JsActorLogger = printlnLogger
