@@ -7,12 +7,11 @@
  */
 package jsactor.bridge.client
 
-import com.codemettle.weblogging.WebLogging
-
+import jsactor._
 import jsactor.bridge.client.ClientBridgeActor.{SendMessageToServer, ServerActorProxy}
 import jsactor.bridge.protocol._
-import jsactor._
-import scala.util.{Success, Failure, Try}
+import jsactor.logging.JsActorLogging
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author steven
@@ -23,11 +22,11 @@ object ClientBridgeActor {
     JsProps(new ClientBridgeActor)
   }
 
-  private class ServerActorProxy(serverPath: String) extends JsActor with WebLogging {
+  private class ServerActorProxy(serverPath: String) extends JsActor with JsActorLogging {
     override def preStart(): Unit = {
       super.preStart()
 
-      logger.trace(s"${self.path} created for serverActor $serverPath")
+      log.trace(s"${self.path} created for serverActor $serverPath")
     }
 
     def receive = {
@@ -44,7 +43,7 @@ object ClientBridgeActor {
   private case class SendMessageToServer(clientPath: JsActorPath, serverPath: String, clientActor: JsActorRef, message: Any)
 }
 
-class ClientBridgeActor(implicit bridgeProtocol: BridgeProtocol) extends JsActor with WebLogging {
+class ClientBridgeActor(implicit bridgeProtocol: BridgeProtocol) extends JsActor with JsActorLogging {
   private val protocolPickler = new ProtocolPickler
 
   private var serverProxies = Map.empty[String, JsActorRef]
@@ -70,7 +69,7 @@ class ClientBridgeActor(implicit bridgeProtocol: BridgeProtocol) extends JsActor
     val cts = ClientToServerMessage(BridgeId(clientPath, serverPath), msg)
 
     Try(protocolPickler.pickle(cts)) match {
-      case Failure(t) ⇒ logger.error(s"Error pickling $cts: $t")
+      case Failure(t) ⇒ log.error(s"Error pickling $cts: $t")
 
       case Success(json) ⇒
         context.parent ! WebSocketActor.InternalMessages.SendPickledMessageThroughWebsocket(json)
@@ -109,12 +108,12 @@ class ClientBridgeActor(implicit bridgeProtocol: BridgeProtocol) extends JsActor
 
     case WebSocketActor.Messages.MessageReceived(data) ⇒ data match {
       case json: String ⇒ Try(protocolPickler.unpickle(json)) match {
-        case Failure(t) ⇒ logger.error(s"Error unpickling $json: $t")
+        case Failure(t) ⇒ log.error(s"Error unpickling $json: $t")
 
         case Success(msg) ⇒ msg match {
           case ServerToClientMessage(bridgeId, message) ⇒
             clientActors get bridgeId.clientPath match {
-              case None ⇒ logger.warn(s"Dropping $msg since client actor seems to have died")
+              case None ⇒ log.warn(s"Dropping $msg since client actor seems to have died")
 
               case Some(clientActor) ⇒
                 val msg = message match {
@@ -135,11 +134,11 @@ class ClientBridgeActor(implicit bridgeProtocol: BridgeProtocol) extends JsActor
 
           case sanf@ServerActorNotFound(bridgeId) ⇒ clientActors get bridgeId.clientPath foreach (_ ! sanf)
 
-          case _ ⇒ logger.warn(s"Unknown message: $msg")
+          case _ ⇒ log.warn(s"Unknown message: $msg")
         }
       }
 
-      case _ ⇒ logger.error(s"Don't know how to decode $data")
+      case _ ⇒ log.error(s"Don't know how to decode $data")
     }
   }
 }

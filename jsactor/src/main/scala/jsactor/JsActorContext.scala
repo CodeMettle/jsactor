@@ -7,8 +7,6 @@
  */
 package jsactor
 
-import com.codemettle.weblogging.WebLogging
-
 import jsactor.JsActor.Receive
 import jsactor.JsInternalActorContext.Envelope
 import scala.collection.immutable
@@ -98,7 +96,9 @@ object JsInternalActorContext {
 
 class JsInternalActorContext(override val props: JsProps, override val parent: JsActorRef, _actorRef: JsInternalActorRef)
                             (implicit val system: JsActorSystem, val dispatcher: ExecutionContextExecutor)
-  extends JsActorContext with JsInternalActorRefFactory with WebLogging {
+  extends JsActorContext with JsInternalActorRefFactory {
+  protected val log = system.getLogger(getClass.getName)
+
   _actorRef.ctx = this
 
   private var actorImpl: JsActor = _
@@ -117,7 +117,7 @@ class JsInternalActorContext(override val props: JsProps, override val parent: J
       system.actorStarted(self)
     } catch {
       case NonFatal(e) ⇒
-        logger.error(s"Error starting ${self.path}: $e")
+        log.error(s"Error starting ${self.path}: $e")
         actorImpl = null
         setReceiveTimeout(Duration.Undefined)
         _terminated = true
@@ -206,15 +206,15 @@ class JsInternalActorContext(override val props: JsProps, override val parent: J
 
   private[jsactor] def stop(): Unit = {
     _initialized = false
-    logger.trace(s"stop(); actorImpl = $actorImpl, children = $children, _mailbox.size = ${_mailbox.size}")
+    log.trace(s"stop(); actorImpl = $actorImpl, children = $children, _mailbox.size = ${_mailbox.size}")
     children foreach stopChild
-    logger.trace(s"calling postStop on $actorImpl")
+    log.trace(s"calling postStop on $actorImpl")
     try actorImpl.postStop()
     catch {
       case NonFatal(e) ⇒
-        logger.error(s"Error while stopping ${self.path}: $e")
+        log.error(s"Error while stopping ${self.path}: $e")
     }
-    logger.trace(s"$self is stopping, sending ${_mailbox} to deadLetters")
+    log.trace(s"$self is stopping, sending ${_mailbox} to deadLetters")
     _mailbox foreach {
       case Envelope(msg, send) ⇒ deadLetter(msg, send)
     }
@@ -272,9 +272,9 @@ class JsInternalActorContext(override val props: JsProps, override val parent: J
           case NonFatal(e) ⇒
             _currentMessage = null
 
-            logger.error(s"$e")
-            logger.error(s"while $self was processing $m")
-            logger.warn(s"Restarting ${self.path}")
+            log.error(s"$e")
+            log.error(s"while $self was processing $m")
+            log.warn(s"Restarting ${self.path}")
 
             restart(e, Some(message))
         } finally {

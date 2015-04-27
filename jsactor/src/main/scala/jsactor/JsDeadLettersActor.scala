@@ -7,16 +7,16 @@
  */
 package jsactor
 
-import com.codemettle.weblogging.WebLogging
+import jsactor.logging.JsActorLogging
 
 /**
  * @author steven
  *
  */
-private[jsactor] class JsDeadLettersActor extends JsActor with WebLogging {
+private[jsactor] class JsDeadLettersActor extends JsActor with JsActorLogging {
     override def receive: Receive = {
-        case JsDeadLetter(msg, sender, recip) ⇒ logger.info(s"Message [${msg.getClass.getName}] from $sender to $recip was not delivered.")
-        case msg ⇒ logger.info(s"Message [${msg.getClass.getName}] from ${sender()} was not delivered.")
+        case JsDeadLetter(msg, sender, recip) ⇒ log.info(s"Message [${msg.getClass.getName}] from $sender to $recip was not delivered.")
+        case msg ⇒ log.info(s"Message [${msg.getClass.getName}] from ${sender()} was not delivered.")
     }
 }
 

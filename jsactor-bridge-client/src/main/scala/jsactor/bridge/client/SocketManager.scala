@@ -7,14 +7,13 @@
  */
 package jsactor.bridge.client
 
-import com.codemettle.weblogging.WebLogging
-
 import jsactor.RippedFromAkka.base64
 import jsactor._
 import jsactor.bridge.client.SocketManager.Events._
 import jsactor.bridge.client.SocketManager.InternalMessages.Connected
 import jsactor.bridge.client.SocketManager._
 import jsactor.bridge.protocol.BridgeProtocol
+import jsactor.logging.JsActorLogging
 import scala.concurrent.duration._
 
 /**
@@ -50,7 +49,7 @@ object SocketManager {
   private case object TryToConnect
 }
 
-class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) extends JsActor with WebLogging {
+class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) extends JsActor with JsActorLogging {
   private val wsActorName = Iterator from 0 map (i ⇒ s"ws${base64(i)}")
 
   private var reconnectTimer = Option.empty[JsCancellable]
@@ -84,7 +83,7 @@ class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) ext
   private def scheduleReconnectTry(currReconnTime: FiniteDuration, data: fsm.Data) = {
     updateSubscribers(WebSocketDisconnected)
 
-    logger.debug(s"Trying to connect in ${currReconnTime.toMillis.millis.toCoarsest}")
+    log.debug(s"Trying to connect in ${currReconnTime.toMillis.millis.toCoarsest}")
     reconnectTimer = Some(context.system.scheduler.scheduleOnce(currReconnTime, self, TryToConnect))
     context become disconnected(data.copy(reconnectTime = nextReconnectTime(currReconnTime), wsActor = None))
   }
@@ -116,13 +115,13 @@ class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) ext
 
     case JsTerminated(actor) ⇒
       if (data.wsActor contains actor) {
-        logger.trace("failed to connect")
+        log.trace("failed to connect")
 
         scheduleReconnectTry(data.reconnectTime, data)
       }
 
     case Connected ⇒
-      logger.trace("Connected")
+      log.trace("Connected")
       data.wsActor map WebSocketConnected foreach updateSubscribers
       context become connected(data.copy(reconnectTime = config.initialReconnectTime))
   }
@@ -130,7 +129,7 @@ class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) ext
   def connected(data: fsm.Data): Receive = handleSubs(data) orElse {
     case JsTerminated(actor) ⇒
       if (data.wsActor contains actor) {
-        logger.trace("Disconnected")
+        log.trace("Disconnected")
 
         scheduleReconnectTry(config.initialReconnectTime, data)
       }

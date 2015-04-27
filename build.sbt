@@ -42,8 +42,7 @@ lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
   persistLauncher in Compile := true,
   persistLauncher in Test := false,
   libraryDependencies ++= Seq(
-    "org.scala-js" %%% "scalajs-dom" % "0.8.0",
-    "com.codemettle.weblogging" %%% "weblogging" % "0.1.0"
+    "org.scala-js" %%% "scalajs-dom" % "0.8.0"
   )
 )) enablePlugins ScalaJSPlugin
 

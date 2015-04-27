@@ -7,17 +7,16 @@
  */
 package jsactor.pattern
 
-import com.codemettle.weblogging.WebLogging
-
 import jsactor._
+import jsactor.logging.JsActorLogging
 import scala.concurrent.{Future, Promise}
 
 /**
  * @author steven
  *
  */
-private[jsactor] case class JsPromiseActorRef(arf: JsActorRefFactory, timeout: JsTimeout, result: Promise[Any], recip: JsActorRef, msg: Any) extends WebLogging {
-  val actor = arf.actorOf(JsProps(new JsActor {
+private[jsactor] case class JsPromiseActorRef(arf: JsActorRefFactory, timeout: JsTimeout, result: Promise[Any], recip: JsActorRef, msg: Any) {
+  val actor = arf.actorOf(JsProps(new JsActor with JsActorLogging {
     val timer = context.system.scheduler.scheduleOnce(timeout.duration, self, JsPoisonPill)
 
     override def preStart() = {
@@ -40,7 +39,7 @@ private[jsactor] case class JsPromiseActorRef(arf: JsActorRefFactory, timeout: J
         context stop self
 
       case reply ⇒
-        logger.trace("!! got reply! ", reply.toString)
+        log.trace("!! got reply! ", reply)
 
         result trySuccess reply
         context stop self

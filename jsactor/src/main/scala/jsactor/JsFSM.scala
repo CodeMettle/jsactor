@@ -7,8 +7,7 @@
  */
 package jsactor
 
-import com.codemettle.weblogging.WebLogging
-
+import jsactor.logging.JsActorLogging
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -141,7 +140,7 @@ object JsFSM {
 
 }
 
-trait JsFSM[S, D] extends JsActor with JsListeners with WebLogging {
+trait JsFSM[S, D] extends JsActor with JsListeners with JsActorLogging {
 
   import JsFSM._
 
@@ -243,7 +242,7 @@ trait JsFSM[S, D] extends JsActor with JsListeners with WebLogging {
    */
   final def setTimer(name: String, msg: Any, timeout: FiniteDuration, repeat: Boolean = false): Unit = {
     if (debugEvent)
-      logger.debug("setting " + (if (repeat) "repeating " else "") + "timer '" + name + "'/" + timeout + ": " + msg)
+      log.debug("setting " + (if (repeat) "repeating " else "") + "timer '" + name + "'/" + timeout + ": " + msg)
     if (timers contains name) {
       timers(name).cancel()
     }
@@ -258,7 +257,7 @@ trait JsFSM[S, D] extends JsActor with JsListeners with WebLogging {
    */
   final def cancelTimer(name: String): Unit = {
     if (debugEvent)
-      logger.debug("canceling timer '" + name + "'")
+      log.debug("canceling timer '" + name + "'")
     if (timers contains name) {
       timers(name).cancel()
       timers -= name
@@ -334,9 +333,9 @@ trait JsFSM[S, D] extends JsActor with JsListeners with WebLogging {
    * The current state may be queried using ``stateName``.
    */
   final def whenUnhandled(stateFunction: StateFunction): Unit = {
-    logger.debug(s"handleEvent = $handleEvent")
-    logger.debug(s"handleEventDefault = $handleEventDefault")
-    logger.debug(s"whenUnhandled = $stateFunction")
+    log.debug(s"handleEvent = $handleEvent")
+    log.debug(s"handleEventDefault = $handleEventDefault")
+    log.debug(s"whenUnhandled = $stateFunction")
     handleEvent = stateFunction orElse handleEventDefault
   }
 
@@ -403,7 +402,7 @@ trait JsFSM[S, D] extends JsActor with JsListeners with WebLogging {
    */
   private val handleEventDefault: StateFunction = {
     case Event(value, stateData) ⇒
-      logger.warn("unhandled event " + value + " in state " + stateName)
+      log.warn("unhandled event " + value + " in state " + stateName)
       stay()
   }
   private var handleEvent: StateFunction = handleEventDefault
@@ -478,10 +477,10 @@ trait JsFSM[S, D] extends JsActor with JsListeners with WebLogging {
       stateFunc(event)
     } else {
       // handleEventDefault ensures that this is always defined
-      logger.trace(s"$handleEvent")
-      logger.debug(s"gonna call handleEvent($event) with source=$source")
-      logger.debug(s"event.getClass=${event.getClass}")
-      logger.debug(s"handleEvent.isDefinedAt(event) = ${handleEvent.isDefinedAt(event)}")
+      log.trace(s"$handleEvent")
+      log.debug(s"gonna call handleEvent($event) with source=$source")
+      log.debug(s"event.getClass=${event.getClass}")
+      log.debug(s"handleEvent.isDefinedAt(event) = ${handleEvent.isDefinedAt(event)}")
       handleEvent(event)
     }
     applyState(nextState)
@@ -551,8 +550,8 @@ trait JsFSM[S, D] extends JsActor with JsListeners with WebLogging {
   }
 
   protected def logTermination(reason: Reason): Unit = reason match {
-    case Failure(ex: Throwable) ⇒ logger.error("terminating due to Failure: " + ex)
-    case Failure(msg: AnyRef)   ⇒ logger.error(msg.toString)
+    case Failure(ex: Throwable) ⇒ log.error("terminating due to Failure: " + ex)
+    case Failure(msg: AnyRef)   ⇒ log.error(msg.toString)
     case _                      ⇒
   }
 }
@@ -588,7 +587,7 @@ trait JsLoggingFSM[S, D] extends JsFSM[S, D] { this: JsActor ⇒
         case a: JsActorRef          ⇒ a.toString
         case _                    ⇒ "unknown"
       }
-      logger.debug("processing " + event + " from " + srcstr)
+      log.debug("processing " + event + " from " + srcstr)
     }
 
     if (logDepth > 0) {
@@ -602,7 +601,7 @@ trait JsLoggingFSM[S, D] extends JsFSM[S, D] { this: JsActor ⇒
     val newState = stateName
 
     if (debugEvent && oldState != newState)
-      logger.debug("transition " + oldState + " -> " + newState)
+      log.debug("transition " + oldState + " -> " + newState)
   }
 
   /**

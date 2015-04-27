@@ -9,11 +9,10 @@ package jsactor.bridge.client
 
 import org.scalajs.dom._
 
-import com.codemettle.weblogging.WebLogging
-
 import jsactor.bridge.client.WebSocketActor.InternalMessages.SendPickledMessageThroughWebsocket
-import jsactor.bridge.client.WebSocketActor.Messages.{IdentifyServerActor, SendMessageToServer, MessageReceived}
+import jsactor.bridge.client.WebSocketActor.Messages.{IdentifyServerActor, MessageReceived, SendMessageToServer}
 import jsactor.bridge.client.WebSocketActor.{OnClose, OnError, OnMessage, OnOpen}
+import jsactor.logging.JsActorLogging
 import jsactor.{JsActor, JsActorRef, JsProps}
 import scala.scalajs.js
 
@@ -44,7 +43,7 @@ object WebSocketActor {
   private case class OnMessage(evt: MessageEvent)
 }
 
-class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsActor with WebLogging {
+class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsActor with JsActorLogging {
   private var webSocketOpt = Option.empty[WebSocket]
 
   private var bridgeActor = Option.empty[JsActorRef]
@@ -52,7 +51,7 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
   override def preStart() = {
     super.preStart()
 
-    logger.trace(s"Attempting to connect to $wsUrl")
+    log.trace(s"Attempting to connect to $wsUrl")
 
     val webSocket = new WebSocket(wsUrl)
     webSocket.onerror = (evt: ErrorEvent) ⇒ self ! OnError(evt)
@@ -66,7 +65,7 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
   override def postStop() = {
     super.postStop()
 
-    logger.info("WebSocket shutting down")
+    log.info("WebSocket shutting down")
 
     webSocketOpt foreach (_.close())
   }
@@ -79,23 +78,23 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
     case SendPickledMessageThroughWebsocket(msg) ⇒ webSocketOpt foreach (_ send msg)
 
     case OnOpen(evt) ⇒
-      logger.info("WebSocket connected to", wsUrl)
-      logger.trace(evt)
+      log.info("WebSocket connected to", wsUrl)
+      log.trace(evt)
 
       bridgeActor = Some(context.actorOf(clientBridgeActorProps, "bridgeActor"))
 
       context.parent ! SocketManager.InternalMessages.Connected
 
     case OnError(errEvt) ⇒
-      logger.error(errEvt)
+      log.error(errEvt)
       context stop self
 
     case OnClose(evt) ⇒
-      logger.warn(evt)
+      log.warn(evt)
       context stop self
 
     case OnMessage(evt) ⇒
-      logger.trace(evt)
+      log.trace(evt)
       bridgeActor foreach (_ ! MessageReceived(evt.data))
   }
 }

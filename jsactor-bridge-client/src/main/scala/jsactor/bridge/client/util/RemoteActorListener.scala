@@ -7,12 +7,11 @@
  */
 package jsactor.bridge.client.util
 
-import com.codemettle.weblogging.WebLogging
-
 import jsactor._
 import jsactor.bridge.client.util.RemoteActorListener.TryConnect
 import jsactor.bridge.client.{SocketManager, WebSocketActor}
 import jsactor.bridge.protocol.{ServerActorFound, ServerActorNotFound}
+import jsactor.logging.JsActorLogging
 import scala.concurrent.duration._
 
 /**
@@ -23,7 +22,7 @@ object RemoteActorListener {
   private case object TryConnect
 }
 
-trait RemoteActorListener extends JsActor with JsStash with WebLogging {
+trait RemoteActorListener extends JsActor with JsStash with JsActorLogging {
   def actorPath: String
   def wsManager: JsActorRef
   def onConnect(serverActor: JsActorRef): Unit
@@ -50,15 +49,15 @@ trait RemoteActorListener extends JsActor with JsStash with WebLogging {
       websocket foreach (_ ! WebSocketActor.Messages.IdentifyServerActor(actorPath))
 
     case JsReceiveTimeout ⇒
-      logger.warn("No response from server when trying to send message to ", actorPath)
+      log.warn("No response from server when trying to send message to ", actorPath)
       self ! TryConnect
 
     case ServerActorNotFound(_) ⇒
-      logger.warn("No actor returned from server for ", actorPath)
+      log.warn("No actor returned from server for ", actorPath)
 
     case ServerActorFound(_) ⇒
       val act = sender()
-      logger.trace("Got actor ", act.toString, " for ", actorPath)
+      log.trace("Got actor ", act.toString, " for ", actorPath)
       context watch act
       context setReceiveTimeout Duration.Undefined
       onConnect(act)
@@ -75,13 +74,13 @@ trait RemoteActorListener extends JsActor with JsStash with WebLogging {
 
   private def listenForDisconnects: Receive = {
     case JsTerminated(act) if serverActor contains act ⇒
-      logger.trace("Server actor ", act.toString, " terminated")
+      log.trace("Server actor ", act.toString, " terminated")
       serverActor = None
       context become receive
       self ! TryConnect
 
     case SocketManager.Events.WebSocketDisconnected | SocketManager.Events.WebSocketShutdown ⇒
-      logger.trace("WebSocket disconnected")
+      log.trace("WebSocket disconnected")
       serverActor = None
       websocket = None
       context become receive
