@@ -1,35 +1,35 @@
+import com.typesafe.sbt.pgp.PgpKeys.publishSigned
 import org.scalajs.sbtplugin.cross.CrossType
 import sbt.Keys._
+import sbtrelease.ReleasePlugin.ReleaseKeys.publishArtifactsAction
+import xerial.sbt.Sonatype.SonatypeKeys.profileName
 
-val commonSettings: Seq[Setting[_]] = releaseSettings ++ Seq(
+val commonSettings: Seq[Setting[_]] = releaseSettings ++ sonatypeSettings ++ Seq(
   organization := "com.codemettle.jsactor",
   scalaVersion := "2.11.6",
   scalacOptions := Seq("-Xlint", "-unchecked", "-deprecation", "-feature"),
-  resolvers ++= Seq(
-    Resolver.mavenLocal,
-    "cm" at "http://maven.codemettle.com/archiva/repository/internal",
-    "cm/snaps" at "http://maven.codemettle.com/archiva/repository/snapshots"
-  ),
+  startYear := Some(2015),
+  homepage := Some(url("https://github.com/CodeMettle/jsactor")),
+  organizationName := "CodeMettle, LLC",
+  organizationHomepage := Some(url("http://www.codemettle.com")),
+  licenses += ("Apache License, Version 2.0" → url("http://www.apache.org/licenses/LICENSE-2.0.html")),
   scmInfo := Some(
-    ScmInfo(url("http://git.codemettle.com/steven/jsactor"),
-      "scm:git:http://git.codemettle.com/steven/jsactor.git",
-      Some("scm:git:git@git.codemettle.com:steven/jsactor.git"))
+    ScmInfo(url("https://github.com/CodeMettle/jsactor"),
+      "scm:git:git@github.com:CodeMettle/jsactor.git",
+      Some("scm:git:git@github.com:CodeMettle/jsactor.git"))
   ),
   pomExtra := {
     <developers>
       <developer>
         <name>Steven Scott</name>
         <email>steven@codemettle.com</email>
-        <url>http://git.codemettle.com/u/steven</url>
+        <url>https://github.com/codingismy11to7/</url>
       </developer>
     </developers>
   },
+  publishArtifactsAction := publishSigned.value,
   publishMavenStyle := true,
-  publishTo := Some(
-    Resolver.ssh("CodeMettle Maven", "maven.codemettle.com",
-      s"archiva/data/repositories/${if (isSnapshot.value) "snapshots" else "internal"}/") as
-        ("archiva", Path.userHome / ".ssh" / "id_rsa")
-  )
+  profileName := "com.codemettle"
 )
 
 lazy val root = project in file(".") settings (commonSettings ++ Seq(

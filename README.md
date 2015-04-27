@@ -7,6 +7,8 @@ authorship. Most of the code that isn't straight from Akka was at least written 
 their concepts and techniques. Anything broken is my fault, everything else is thanks to their work. My hope is that
 they create and maintain an official Scala.js version of Akka; until then `jsactor` seems to mostly work.
 
+While this projects works, somewhat, it's not close to production-quality.
+
 # Why?
 
 I'm used to working with the Actor model on the backend, with Scala.js it feels natural to use Actors and have
