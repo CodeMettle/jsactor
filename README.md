@@ -1,6 +1,8 @@
 # jsactor
 Actors on Scala.js
 
+Check out a rough example project at https://github.com/CodeMettle/jsactor-spa-example
+
 ### Disclaimer
 Much of this code (the good parts) are straight from [Typesafe/Akka](https://github.com/akka/akka) and I don't claim
 authorship. Most of the code that isn't straight from Akka was at least written while looking at Akka code and uses
