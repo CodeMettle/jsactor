@@ -1,4 +1,6 @@
 # jsactor
+
+[![Join the chat at https://gitter.im/CodeMettle/jsactor](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/CodeMettle/jsactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 Actors on Scala.js
 
 Check out a rough example project at https://github.com/CodeMettle/jsactor-spa-example
