@@ -8,8 +8,8 @@
 package jsactor.bridge.client.util
 
 import jsactor._
-import jsactor.bridge.client.util.RemoteActorListener.TryConnect
-import jsactor.bridge.client.{SocketManager, WebSocketActor}
+import jsactor.bridge.client.util.UntypedRemoteActorListener.TryConnect
+import jsactor.bridge.client.{SocketManager, WebSocketActor, WebSocketManager}
 import jsactor.bridge.protocol.{ServerActorFound, ServerActorNotFound}
 import jsactor.logging.JsActorLogging
 import scala.concurrent.duration._
@@ -18,11 +18,11 @@ import scala.concurrent.duration._
  * @author steven
  *
  */
-object RemoteActorListener {
+object UntypedRemoteActorListener {
   private case object TryConnect
 }
 
-trait RemoteActorListener extends JsActor with JsStash with JsActorLogging {
+trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLogging {
   def actorPath: String
   def wsManager: JsActorRef
   def onConnect(serverActor: JsActorRef): Unit
@@ -85,4 +85,9 @@ trait RemoteActorListener extends JsActor with JsStash with JsActorLogging {
       websocket = None
       context become receive
   }
+}
+
+trait RemoteActorListener extends UntypedRemoteActorListener {
+  def webSocketManager: WebSocketManager
+  final override def wsManager = webSocketManager.socketManager
 }

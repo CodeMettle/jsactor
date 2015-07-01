@@ -135,3 +135,10 @@ class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) ext
       }
   }
 }
+
+class WebSocketManager(config: SocketManager.Config, name: String = "socketManager")
+                      (implicit arf: JsActorRefFactory, bridgeProtocol: BridgeProtocol) {
+  val socketManager = arf.actorOf(SocketManager.props(config), name)
+
+  def subscribeToEvents(implicit subscriber: JsActorRef) = socketManager ! SocketManager.Events.SubscribeToEvents
+}
