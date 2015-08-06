@@ -46,7 +46,7 @@ trait BridgeProtocol {
    */
   def registerMessages(registry: MessageRegistry): Unit
 
-  private[bridge] def pickleJs(obj: Any): Js.Value = {
+  def pickleJs(obj: Any): Js.Value = {
     obj match {
       case StatusFailure(cause) ⇒ Js.Obj(failureEntry → pickleJs(obj))
 
@@ -59,11 +59,11 @@ trait BridgeProtocol {
     }
   }
 
-  private[bridge] def pickle(obj: Any): String = {
+  def pickle(obj: Any): String = {
     json.write(pickleJs(obj))
   }
 
-  private[bridge] def unpickleJs(js: Js.Value): Any = js match {
+  def unpickleJs(js: Js.Value): Any = js match {
     case obj: Js.Obj ⇒
       obj.value find (_._1 == failureEntry) match {
         case None ⇒ throw Invalid.Data(obj, "Expected a failure entry")
@@ -90,7 +90,7 @@ trait BridgeProtocol {
     case jsval ⇒ throw Invalid.Data(jsval, "Expected an Array of 2 elements or a failure")
   }
 
-  private[bridge] def unpickle(json: String): Any = {
+  def unpickle(json: String): Any = {
     unpickleJs(upickle.json.read(json))
   }
 }
