@@ -8,8 +8,9 @@
 package jsactor.bridge.protocol
 
 import upickle._
+import upickle.default._
 
-import jsactor.bridge.protocol.ProtocolPickler.{stcPrefix, ctsPrefix}
+import jsactor.bridge.protocol.ProtocolPickler.{ctsPrefix, stcPrefix}
 
 /**
  * @author steven
@@ -26,13 +27,13 @@ private[bridge] class ProtocolPickler(implicit bridgeProtocol: BridgeProtocol) {
     Js.Arr(writeJs(bm.bridgeId), bridgeProtocol.pickleJs(bm.message))
   }
 
-  private def unpickleBridgedMsg[T <: BridgedMessage](jsVal: Js.Value, ctor: (BridgeId, Any) ⇒ T): T = {
+  private def unpickleBridgedMsg[PM <: BridgedMessage](jsVal: Js.Value, ctor: (BridgeId, Any) ⇒ PM): PM = {
     jsVal match {
       case jsArr: Js.Arr ⇒
         if (jsArr.value.size != 2)
           throw Invalid.Data(jsArr, "Expected 2 elements")
 
-        val bid = upickle.readJs[BridgeId](jsArr.value(0))
+        val bid = readJs[BridgeId](jsArr.value(0))
         val msg = bridgeProtocol.unpickleJs(jsArr.value(1))
 
         ctor(bid, msg)
@@ -57,7 +58,7 @@ private[bridge] class ProtocolPickler(implicit bridgeProtocol: BridgeProtocol) {
     case jsVal ⇒ unpickleBridgedMsg(jsVal, ServerToClientMessage.apply)
   }
 
-  def pickle[T <: ProtocolMessage : Writer](obj: T): String = write(obj)
+  def pickle[PM <: ProtocolMessage : Writer](obj: PM): String = write(obj)
   def pickle(bm: BridgedMessage): String = bm match {
     case cts: ClientToServerMessage ⇒ ctsPrefix + write(cts)
     case stc: ServerToClientMessage ⇒ stcPrefix + write(stc)

@@ -49,7 +49,7 @@ lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
 lazy val jsactorBridgeShared = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared")) settings (commonSettings ++ Seq(
   name := "jsactor-bridge-shared",
   libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "upickle" % "0.2.8"
+    "com.lihaoyi" %%% "upickle" % "0.3.5"
   )
 ): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
 

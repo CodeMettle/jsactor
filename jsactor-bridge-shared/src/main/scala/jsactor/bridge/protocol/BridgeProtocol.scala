@@ -8,8 +8,9 @@
 package jsactor.bridge.protocol
 
 import upickle._
+import upickle.default._
 
-import jsactor.bridge.protocol.BridgeProtocol.{failureEntry, MessageRegistry}
+import jsactor.bridge.protocol.BridgeProtocol.{MessageRegistry, failureEntry}
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
 
