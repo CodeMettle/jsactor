@@ -1,10 +1,7 @@
-import com.typesafe.sbt.pgp.PgpKeys.publishSigned
 import org.scalajs.sbtplugin.cross.CrossType
 import sbt.Keys._
-import sbtrelease.ReleasePlugin.ReleaseKeys.publishArtifactsAction
-import xerial.sbt.Sonatype.SonatypeKeys.profileName
 
-val commonSettings: Seq[Setting[_]] = releaseSettings ++ sonatypeSettings ++ Seq(
+val commonSettings: Seq[Setting[_]] = Seq(
   organization := "com.codemettle.jsactor",
   scalaVersion := "2.11.6",
   scalacOptions := Seq("-Xlint", "-unchecked", "-deprecation", "-feature"),
@@ -27,9 +24,9 @@ val commonSettings: Seq[Setting[_]] = releaseSettings ++ sonatypeSettings ++ Seq
       </developer>
     </developers>
   },
-  publishArtifactsAction := publishSigned.value,
+  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
   publishMavenStyle := true,
-  profileName := "com.codemettle"
+  sonatypeProfileName := "com.codemettle"
 )
 
 lazy val root = project in file(".") settings (commonSettings ++ Seq(
@@ -42,14 +39,14 @@ lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
   persistLauncher in Compile := true,
   persistLauncher in Test := false,
   libraryDependencies ++= Seq(
-    "org.scala-js" %%% "scalajs-dom" % "0.8.0"
+    "org.scala-js" %%% "scalajs-dom" % "0.8.2"
   )
 )) enablePlugins ScalaJSPlugin
 
 lazy val jsactorBridgeShared = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared")) settings (commonSettings ++ Seq(
   name := "jsactor-bridge-shared",
   libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "upickle" % "0.3.5"
+    "com.lihaoyi" %%% "upickle" % "0.3.7"
   )
 ): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
 
