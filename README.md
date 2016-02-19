@@ -101,10 +101,14 @@ libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-shared" % "0
  ...
 ```
 
-Currently this project (so, by extension, client and server bridge projects) depends on
-[upickle](https://github.com/lihaoyi/upickle), with no way to change that.
+~~Currently this project (so, by extension, client and server bridge projects) depends on 
+[uPickle](https://github.com/lihaoyi/upickle), with no way to change that.~~
 
-`upickle` was written, I assume, with [autowire](https://github.com/lihaoyi/autowire) in mind - all types are known in
+This whole readme is out of date, but nobody uses this library anyway, so NBD. But there now are `*-upickle` projects
+that are based on uPickle. I aim to add [BooPickle](https://github.com/ochrons/boopickle) and/or 
+[Circe](https://github.com/travisbrown/circe) implementations of client-server bridges.
+
+`uPickle` was written, I assume, with [autowire](https://github.com/lihaoyi/autowire) in mind - all types are known in
 advance. That presents an issue for `jsactor` since the Akka model is typeless and depends on pattern matching.
 I worked around this with inspiration from (or, really, by copying) [scala-js-pickling](https://github.com/scala-js/scala-js-pickling)'s
 `PicklerRegistry`. The top-level bridge actor on client and server need an implicit `BridgeProtocol` in scope. The
