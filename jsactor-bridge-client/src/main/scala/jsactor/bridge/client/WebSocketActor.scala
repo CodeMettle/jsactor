@@ -11,9 +11,11 @@ import org.scalajs.dom
 
 import jsactor.bridge.client.WebSocketActor.InternalMessages.SendPickledMessageThroughWebsocket
 import jsactor.bridge.client.WebSocketActor.Messages.{IdentifyServerActor, MessageReceived, SendMessageToServer}
+import jsactor.bridge.client.WebSocketActor.WebSocketSendable._
 import jsactor.bridge.client.WebSocketActor.{OnClose, OnError, OnMessage, OnOpen}
 import jsactor.logging.JsActorLogging
 import jsactor.{JsActor, JsActorRef, JsProps}
+import scala.scalajs.js
 
 /**
  * @author steven
@@ -33,13 +35,34 @@ object WebSocketActor {
   }
 
   object InternalMessages {
-    case class SendPickledMessageThroughWebsocket(msg: String)
+    case class SendPickledMessageThroughWebsocket[T : WebSocketSendable](msg: T) {
+      def send(ws: dom.WebSocket) = ws send msg
+    }
   }
 
   private case class OnError(reason: dom.ErrorEvent)
   private case class OnOpen(evt: dom.Event)
   private case class OnClose(evt: dom.CloseEvent)
   private case class OnMessage(evt: dom.MessageEvent)
+
+  trait WebSocketSendable[T] {
+    def send(ws: dom.WebSocket, msg: T): Unit
+  }
+
+  object WebSocketSendable {
+    implicit object StrWSS extends WebSocketSendable[String] {
+      override def send(ws: dom.WebSocket, msg: String): Unit = ws send msg
+    }
+    implicit object BlobWSS extends WebSocketSendable[dom.Blob] {
+      override def send(ws: dom.WebSocket, msg: dom.Blob): Unit = ws send msg
+    }
+    implicit object TypArrWSS extends WebSocketSendable[js.typedarray.ArrayBuffer] {
+      override def send(ws: dom.WebSocket, msg: js.typedarray.ArrayBuffer): Unit = ws send msg
+    }
+    implicit class WSSWebSocket(val ws: dom.WebSocket) extends AnyVal {
+      def send[T : WebSocketSendable](msg: T) = implicitly[WebSocketSendable[T]].send(ws, msg)
+    }
+  }
 }
 
 class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsActor with JsActorLogging {
@@ -74,7 +97,7 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
 
     case identify: IdentifyServerActor ⇒ bridgeActor foreach (_ forward identify)
 
-    case SendPickledMessageThroughWebsocket(msg) ⇒ webSocketOpt foreach (_ send msg)
+    case spm: SendPickledMessageThroughWebsocket[_] ⇒ webSocketOpt foreach spm.send
 
     case OnOpen(evt) ⇒
       log.info("WebSocket connected to", wsUrl)

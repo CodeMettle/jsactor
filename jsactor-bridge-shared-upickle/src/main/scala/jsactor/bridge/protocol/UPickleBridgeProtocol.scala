@@ -35,7 +35,7 @@ object UPickleBridgeProtocol {
 }
 
 @implicitNotFound("Need an implicit UPickleBridgeProtocol in scope, consider creating an implicit object extending UPickleBridgeProtocol")
-trait UPickleBridgeProtocol extends BridgeProtocol[Js.Value] {
+trait UPickleBridgeProtocol extends BridgeProtocol[Js.Value, String] {
   private val registry = new MessageRegistry
   registerMessages(registry)
   private val msgMap = registry.msgMap

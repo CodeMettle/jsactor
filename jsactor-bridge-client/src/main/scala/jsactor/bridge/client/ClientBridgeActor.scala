@@ -9,8 +9,10 @@ package jsactor.bridge.client
 
 import jsactor._
 import jsactor.bridge.client.ClientBridgeActor.{SendMessageToServer, ServerActorProxy}
+import jsactor.bridge.client.WebSocketActor.WebSocketSendable
 import jsactor.bridge.protocol._
 import jsactor.logging.JsActorLogging
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -39,10 +41,13 @@ object ClientBridgeActor {
   private case class SendMessageToServer(clientPath: JsActorPath, serverPath: String, clientActor: JsActorRef, message: Any)
 }
 
-trait ClientBridgeActor[JsValue] extends JsActor with JsActorLogging {
-  implicit def bridgeProtocol: BridgeProtocol[JsValue]
+trait ClientBridgeActor[JsValue, PickleTo] extends JsActor with JsActorLogging {
+  protected implicit def pickleWSS: WebSocketSendable[PickleTo]
+  protected implicit def pickleCT: ClassTag[PickleTo]
 
-  protected def newProtocolPickler: ProtocolPickler[JsValue]
+  implicit def bridgeProtocol: BridgeProtocol[JsValue, PickleTo]
+
+  protected def newProtocolPickler: ProtocolPickler[JsValue, PickleTo]
 
   private val protocolPickler = newProtocolPickler
 
@@ -107,7 +112,7 @@ trait ClientBridgeActor[JsValue] extends JsActor with JsActorLogging {
       sendMessageToServer(FindServerActor(BridgeId(sender().path.toString, serverPath)))
 
     case WebSocketActor.Messages.MessageReceived(data) ⇒ data match {
-      case json: String ⇒ Try(protocolPickler.unpickle(json)) match {
+      case json: PickleTo ⇒ Try(protocolPickler.unpickle(json)) match {
         case Failure(t) ⇒ log.error(s"Error unpickling $json: $t")
 
         case Success(msg) ⇒ msg match {

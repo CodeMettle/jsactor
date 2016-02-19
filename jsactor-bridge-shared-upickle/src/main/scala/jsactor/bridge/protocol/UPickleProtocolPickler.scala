@@ -21,7 +21,8 @@ private[bridge] object UPickleProtocolPickler {
   private val stcPrefix = "__stcBridge__::"
 }
 
-private[bridge] class UPickleProtocolPickler(implicit bridgeProtocol: UPickleBridgeProtocol) extends ProtocolPickler[Js.Value] {
+private[bridge] class UPickleProtocolPickler(implicit bridgeProtocol: BridgeProtocol[Js.Value, String])
+  extends ProtocolPickler[Js.Value, String] {
 
   private def pickleBridgedMsg(bm: BridgedMessage): Js.Arr = {
     Js.Arr(writeJs(bm.bridgeId), bridgeProtocol.pickleJs(bm.message))

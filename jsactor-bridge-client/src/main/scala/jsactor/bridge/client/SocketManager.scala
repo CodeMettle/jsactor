@@ -21,9 +21,9 @@ import scala.concurrent.duration._
  *
  */
 object SocketManager {
-  trait Config[JsValue] {
+  trait Config[JsValue, PickleTo] {
     def wsUrl: String
-    def clientBridgeActorProps: (BridgeProtocol[JsValue]) ⇒ JsProps
+    def clientBridgeActorProps: (BridgeProtocol[JsValue, PickleTo]) ⇒ JsProps
     def webSocketActorProps: (String, JsProps) ⇒ JsProps
     def initialReconnectTime: FiniteDuration
     def maxReconnectTime: FiniteDuration
@@ -49,9 +49,9 @@ object SocketManager {
   private case object TryToConnect
 }
 
-trait SocketManager[JsValue] extends JsActor with JsActorLogging {
-  def config: Config[JsValue]
-  implicit def bridgeProtocol: BridgeProtocol[JsValue]
+trait SocketManager[JsValue, PickleTo] extends JsActor with JsActorLogging {
+  def config: Config[JsValue, PickleTo]
+  implicit def bridgeProtocol: BridgeProtocol[JsValue, PickleTo]
 
   private val wsActorName = Iterator from 0 map (i ⇒ s"ws${base64(i)}")
 

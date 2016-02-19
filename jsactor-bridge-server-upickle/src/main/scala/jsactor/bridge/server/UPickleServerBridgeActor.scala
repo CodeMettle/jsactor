@@ -11,6 +11,8 @@ import upickle._
 
 import akka.actor.{ActorRef, Props}
 import jsactor.bridge.protocol.{UPickleBridgeProtocol, UPickleProtocolPickler}
+import jsactor.bridge.server.ServerBridgeActor.WebSocketSendable
+import scala.reflect.ClassTag
 
 object UPickleServerBridgeActor {
   def props(clientWebSocket: ActorRef)(implicit bridgeProtocol: UPickleBridgeProtocol) = {
@@ -19,7 +21,12 @@ object UPickleServerBridgeActor {
 }
 
 class UPickleServerBridgeActor(val clientWebSocket: ActorRef)
-                              (implicit val bridgeProtocol: UPickleBridgeProtocol) extends ServerBridgeActor[Js.Value] {
+                              (implicit val bridgeProtocol: UPickleBridgeProtocol)
+  extends ServerBridgeActor[Js.Value, String] {
+
+  override protected implicit def pickleWSS: WebSocketSendable[String] = WebSocketSendable.StrWSS
+
+  override protected implicit def pickleToCT = ClassTag(classOf[String])
 
   override protected def newProtocolPickler = new UPickleProtocolPickler
 

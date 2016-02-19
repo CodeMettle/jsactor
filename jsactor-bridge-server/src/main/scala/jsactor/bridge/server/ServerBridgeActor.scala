@@ -9,9 +9,11 @@ package jsactor.bridge.server
 
 import akka.actor._
 import jsactor.bridge.protocol._
-import jsactor.bridge.server.ServerBridgeActor.{SendMessageToClient, ClientActorProxy}
-import scala.concurrent.{Promise, Future}
-import scala.util.{Success, Failure, Try}
+import jsactor.bridge.server.ServerBridgeActor.WebSocketSendable._
+import jsactor.bridge.server.ServerBridgeActor.{ClientActorProxy, SendMessageToClient, WebSocketSendable}
+import scala.concurrent.{Future, Promise}
+import scala.reflect.ClassTag
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author steven
@@ -37,12 +39,32 @@ object ServerBridgeActor {
   }
 
   private case class SendMessageToClient(clientPath: String, serverPath: ActorPath, serverActor: ActorRef, message: Any)
+
+  trait WebSocketSendable[T] {
+    def sendPickledMsg(ws: ActorRef, msg: T)(implicit sender: ActorRef): Unit
+  }
+
+  object WebSocketSendable {
+    // implicits for 2 types that Play WebSockets can accept by default
+    implicit object StrWSS extends WebSocketSendable[String] {
+      override def sendPickledMsg(ws: ActorRef, msg: String)(implicit sender: ActorRef): Unit = ws ! msg
+    }
+    implicit object ArrWSS extends WebSocketSendable[Array[Byte]] {
+      override def sendPickledMsg(ws: ActorRef, msg: Array[Byte])(implicit sender: ActorRef): Unit = ws ! msg
+    }
+    implicit class WSSWebSocket(val ws: ActorRef) extends AnyVal {
+      def sendPickledMsg[T : WebSocketSendable](msg: T)(implicit sender: ActorRef): Unit =
+        implicitly[WebSocketSendable[T]].sendPickledMsg(ws, msg)
+    }
+  }
 }
 
-trait ServerBridgeActor[JsValue] extends Actor with ActorLogging {
-  protected implicit def bridgeProtocol: BridgeProtocol[JsValue]
+trait ServerBridgeActor[JsValue, PickleTo] extends Actor with ActorLogging {
+  protected implicit def pickleToCT: ClassTag[PickleTo]
+  protected implicit def pickleWSS: WebSocketSendable[PickleTo]
+  protected implicit def bridgeProtocol: BridgeProtocol[JsValue, PickleTo]
   def clientWebSocket: ActorRef
-  protected def newProtocolPickler: ProtocolPickler[JsValue]
+  protected def newProtocolPickler: ProtocolPickler[JsValue, PickleTo]
   private val protocolPickler = newProtocolPickler
 
   private var clientProxies = Map.empty[String, ActorRef]
@@ -74,7 +96,7 @@ trait ServerBridgeActor[JsValue] extends Actor with ActorLogging {
   }
 
   private def sendMessageToClient(pm: ProtocolMessage) = {
-    clientWebSocket ! protocolPickler.pickle(pm)
+    clientWebSocket sendPickledMsg protocolPickler.pickle(pm)
   }
 
   private def sendMessageToClient(clientPath: String, serverPath: String, message: Any) = {
@@ -88,7 +110,7 @@ trait ServerBridgeActor[JsValue] extends Actor with ActorLogging {
     Try(protocolPickler.pickle(stc)) match {
       case Failure(t) ⇒ log.error(t, "Error pickling {}", stc)
 
-      case Success(json) ⇒ clientWebSocket ! json
+      case Success(json) ⇒ clientWebSocket sendPickledMsg json
     }
   }
 
@@ -121,7 +143,7 @@ trait ServerBridgeActor[JsValue] extends Actor with ActorLogging {
       fulfillOutstandingIdentify(serverPathStr, Some(serverActor))
       sendMessageToClient(clientPath, serverPathStr, message)
 
-    case json: String ⇒ Try(protocolPickler.unpickle(json)) match {
+    case json: PickleTo ⇒ Try(protocolPickler.unpickle(json)) match {
       case Failure(t) ⇒ log.error(t, "Error unpickling {}", json)
 
       case Success(msg) ⇒ msg match {
