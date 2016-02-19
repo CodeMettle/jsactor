@@ -8,6 +8,7 @@
 package jsactor
 
 import scala.concurrent.duration.FiniteDuration
+import scala.scalajs.js
 
 /**
  * @author steven
@@ -43,10 +44,10 @@ private[jsactor] class JsActorSchedulerImpl extends JsActorScheduler {
         private var _cancelled = false
         private var _initialDone = false
 
-        private var _intervalHandle: Int = _
+        private var _intervalHandle: js.timers.SetIntervalHandle = _
         private val initialTimer = scheduleOnce(initialDelay) {
                 _initialDone = true
-                _intervalHandle = org.scalajs.dom.setInterval(() ⇒ runnable.run(), interval.toMillis.toInt)
+                _intervalHandle = js.timers.setInterval(interval)(runnable.run())
                 runnable.run()
             }
 
@@ -56,7 +57,7 @@ private[jsactor] class JsActorSchedulerImpl extends JsActorScheduler {
             if (_cancelled)
                 false
             else if (_initialDone) {
-                org.scalajs.dom.clearInterval(_intervalHandle)
+                js.timers.clearInterval(_intervalHandle)
                 _cancelled = true
 
                 true
@@ -73,7 +74,7 @@ private[jsactor] class JsActorSchedulerImpl extends JsActorScheduler {
     override def scheduleOnce(delay: FiniteDuration, runnable: Runnable): JsCancellable = new JsCancellable {
         private var _cancelled = false
 
-        private val timeoutHandle = org.scalajs.dom.setTimeout(() ⇒ runnable.run(), delay.toMillis.toInt)
+        private val timeoutHandle = js.timers.setTimeout(delay)(runnable.run())
 
         override def isCancelled: Boolean = _cancelled
 
@@ -81,7 +82,7 @@ private[jsactor] class JsActorSchedulerImpl extends JsActorScheduler {
             if (_cancelled)
                 false
             else {
-                org.scalajs.dom.clearTimeout(timeoutHandle)
+                js.timers.clearTimeout(timeoutHandle)
                 _cancelled = true
 
                 true
