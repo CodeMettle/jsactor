@@ -18,10 +18,6 @@ import scala.util.{Success, Failure, Try}
  *
  */
 object ServerBridgeActor {
-  def props(clientWebSocket: ActorRef)(implicit bridgeProtocol: BridgeProtocol) = {
-    Props(new ServerBridgeActor(clientWebSocket))
-  }
-
   private class ClientActorProxy(clientPath: String) extends Actor with ActorLogging {
     override def preStart(): Unit = {
       super.preStart()
@@ -43,8 +39,11 @@ object ServerBridgeActor {
   private case class SendMessageToClient(clientPath: String, serverPath: ActorPath, serverActor: ActorRef, message: Any)
 }
 
-class ServerBridgeActor(clientWebSocket: ActorRef)(implicit bridgeProtocol: BridgeProtocol) extends Actor with ActorLogging {
-  private val protocolPickler = new ProtocolPickler
+trait ServerBridgeActor[JsValue] extends Actor with ActorLogging {
+  protected implicit def bridgeProtocol: BridgeProtocol[JsValue]
+  def clientWebSocket: ActorRef
+  protected def newProtocolPickler: ProtocolPickler[JsValue]
+  private val protocolPickler = newProtocolPickler
 
   private var clientProxies = Map.empty[String, ActorRef]
 

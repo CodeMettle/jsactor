@@ -32,7 +32,7 @@ val commonSettings: Seq[Setting[_]] = Seq(
 lazy val root = project in file(".") settings (commonSettings ++ Seq(
   publishArtifact := false,
   publishArtifact in Compile := false
-)) aggregate (jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient, jsactorLoglevel)
+)) aggregate (jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient, jsactorLoglevel, sharedUPickleJVM, sharedUPickleJS, bridgeServerUPickle, bridgeClientUPickle)
 
 lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
   name := "jsactor",
@@ -44,14 +44,21 @@ lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
 )) enablePlugins ScalaJSPlugin
 
 lazy val jsactorBridgeShared = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared")) settings (commonSettings ++ Seq(
-  name := "jsactor-bridge-shared",
+  name := "jsactor-bridge-shared"
+): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
+
+lazy val sharedJVM = jsactorBridgeShared.jvm
+lazy val sharedJS = jsactorBridgeShared.js
+
+lazy val jsactorBridgeSharedUPickle = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared-upickle")) settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-shared-upickle",
   libraryDependencies ++= Seq(
     "com.lihaoyi" %%% "upickle" % "0.3.7"
   )
 ): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
 
-lazy val sharedJVM = jsactorBridgeShared.jvm
-lazy val sharedJS = jsactorBridgeShared.js
+lazy val sharedUPickleJVM = jsactorBridgeSharedUPickle.jvm dependsOn sharedJVM
+lazy val sharedUPickleJS = jsactorBridgeSharedUPickle.js dependsOn sharedJS
 
 lazy val bridgeServer = project in file("jsactor-bridge-server") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-server",
@@ -60,9 +67,17 @@ lazy val bridgeServer = project in file("jsactor-bridge-server") settings (commo
   )
 )) dependsOn sharedJVM
 
+lazy val bridgeServerUPickle = project in file ("jsactor-bridge-server-upickle") settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-server-upickle"
+)) dependsOn (bridgeServer, sharedUPickleJVM)
+
 lazy val bridgeClient = project in file("jsactor-bridge-client") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-client"
 )) dependsOn (sharedJS, jsactor) enablePlugins ScalaJSPlugin
+
+lazy val bridgeClientUPickle = project in file("jsactor-bridge-client-upickle") settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-client-upickle"
+)) dependsOn (bridgeClient, sharedUPickleJS) enablePlugins ScalaJSPlugin
 
 lazy val jsactorLoglevel = project in file("jsactor-loglevel") settings (commonSettings ++ Seq(
   name := "jsactor-loglevel",

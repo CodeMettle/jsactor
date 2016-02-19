@@ -18,10 +18,6 @@ import scala.util.{Failure, Success, Try}
  *
  */
 object ClientBridgeActor {
-  def props(implicit bridgeProtocol: BridgeProtocol) = {
-    JsProps(new ClientBridgeActor)
-  }
-
   private class ServerActorProxy(serverPath: String) extends JsActor with JsActorLogging {
     override def preStart(): Unit = {
       super.preStart()
@@ -43,8 +39,12 @@ object ClientBridgeActor {
   private case class SendMessageToServer(clientPath: JsActorPath, serverPath: String, clientActor: JsActorRef, message: Any)
 }
 
-class ClientBridgeActor(implicit bridgeProtocol: BridgeProtocol) extends JsActor with JsActorLogging {
-  private val protocolPickler = new ProtocolPickler
+trait ClientBridgeActor[JsValue] extends JsActor with JsActorLogging {
+  implicit def bridgeProtocol: BridgeProtocol[JsValue]
+
+  protected def newProtocolPickler: ProtocolPickler[JsValue]
+
+  private val protocolPickler = newProtocolPickler
 
   private var serverProxies = Map.empty[String, JsActorRef]
 

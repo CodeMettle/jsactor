@@ -7,14 +7,13 @@
  */
 package jsactor.bridge.client
 
-import org.scalajs.dom._
+import org.scalajs.dom
 
 import jsactor.bridge.client.WebSocketActor.InternalMessages.SendPickledMessageThroughWebsocket
 import jsactor.bridge.client.WebSocketActor.Messages.{IdentifyServerActor, MessageReceived, SendMessageToServer}
 import jsactor.bridge.client.WebSocketActor.{OnClose, OnError, OnMessage, OnOpen}
 import jsactor.logging.JsActorLogging
 import jsactor.{JsActor, JsActorRef, JsProps}
-import scala.scalajs.js
 
 /**
  * @author steven
@@ -34,17 +33,17 @@ object WebSocketActor {
   }
 
   object InternalMessages {
-    case class SendPickledMessageThroughWebsocket(msg: js.Any)
+    case class SendPickledMessageThroughWebsocket(msg: String)
   }
 
-  private case class OnError(reason: ErrorEvent)
-  private case class OnOpen(evt: Event)
-  private case class OnClose(evt: CloseEvent)
-  private case class OnMessage(evt: MessageEvent)
+  private case class OnError(reason: dom.ErrorEvent)
+  private case class OnOpen(evt: dom.Event)
+  private case class OnClose(evt: dom.CloseEvent)
+  private case class OnMessage(evt: dom.MessageEvent)
 }
 
 class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsActor with JsActorLogging {
-  private var webSocketOpt = Option.empty[WebSocket]
+  private var webSocketOpt = Option.empty[dom.WebSocket]
 
   private var bridgeActor = Option.empty[JsActorRef]
 
@@ -53,11 +52,11 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
 
     log.trace(s"Attempting to connect to $wsUrl")
 
-    val webSocket = new WebSocket(wsUrl)
-    webSocket.onerror = (evt: ErrorEvent) ⇒ self ! OnError(evt)
-    webSocket.onopen = (evt: Event) ⇒ self ! OnOpen(evt)
-    webSocket.onclose = (evt: CloseEvent) ⇒ self ! OnClose(evt)
-    webSocket.onmessage = (evt: MessageEvent) ⇒ self ! OnMessage(evt)
+    val webSocket = new dom.WebSocket(wsUrl)
+    webSocket.onerror = (evt: dom.ErrorEvent) ⇒ self ! OnError(evt)
+    webSocket.onopen = (evt: dom.Event) ⇒ self ! OnOpen(evt)
+    webSocket.onclose = (evt: dom.CloseEvent) ⇒ self ! OnClose(evt)
+    webSocket.onmessage = (evt: dom.MessageEvent) ⇒ self ! OnMessage(evt)
 
     webSocketOpt = Some(webSocket)
   }

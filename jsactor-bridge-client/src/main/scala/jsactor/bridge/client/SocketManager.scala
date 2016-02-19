@@ -21,13 +21,13 @@ import scala.concurrent.duration._
  *
  */
 object SocketManager {
-  def props(config: SocketManager.Config)(implicit bridgeProtocol: BridgeProtocol) = {
-    JsProps(new SocketManager(config))
+  trait Config[JsValue] {
+    def wsUrl: String
+    def clientBridgeActorProps: (BridgeProtocol[JsValue]) ⇒ JsProps
+    def webSocketActorProps: (String, JsProps) ⇒ JsProps
+    def initialReconnectTime: FiniteDuration
+    def maxReconnectTime: FiniteDuration
   }
-
-  case class Config(wsUrl: String, clientBridgeActorProps: (BridgeProtocol) ⇒ JsProps = ClientBridgeActor.props(_),
-                    webSocketActorProps: (String, JsProps) ⇒ JsProps = WebSocketActor.props,
-                    initialReconnectTime: FiniteDuration = 125.millis, maxReconnectTime: FiniteDuration = 4.seconds)
 
   private object fsm {
     case class Data(reconnectTime: FiniteDuration, wsActor: Option[JsActorRef])
@@ -49,7 +49,10 @@ object SocketManager {
   private case object TryToConnect
 }
 
-class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) extends JsActor with JsActorLogging {
+trait SocketManager[JsValue] extends JsActor with JsActorLogging {
+  def config: Config[JsValue]
+  implicit def bridgeProtocol: BridgeProtocol[JsValue]
+
   private val wsActorName = Iterator from 0 map (i ⇒ s"ws${base64(i)}")
 
   private var reconnectTimer = Option.empty[JsCancellable]
@@ -136,9 +139,8 @@ class SocketManager(config: Config)(implicit bridgeProtocol: BridgeProtocol) ext
   }
 }
 
-class WebSocketManager(config: SocketManager.Config, name: String = "socketManager")
-                      (implicit arf: JsActorRefFactory, bridgeProtocol: BridgeProtocol) {
-  val socketManager = arf.actorOf(SocketManager.props(config), name)
+trait WebSocketManager {
+  def socketManager: JsActorRef
 
   def subscribeToEvents(implicit subscriber: JsActorRef) = socketManager ! SocketManager.Events.SubscribeToEvents
 }
