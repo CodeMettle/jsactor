@@ -7,6 +7,8 @@
  */
 package jsactor.bridge.protocol
 
+import java.util.UUID
+
 import cats.data.Xor
 import io.circe._
 import io.circe.generic.auto._
@@ -15,6 +17,7 @@ import io.circe.syntax._
 
 import jsactor.bridge.protocol.CirceBridgeProtocol.{MessageRegistry, failureEntry, successEntry}
 import scala.annotation.implicitNotFound
+import scala.collection.immutable.ListMap
 import scala.reflect.ClassTag
 
 /**
@@ -32,6 +35,37 @@ object CirceBridgeProtocol {
     def addObj[A <: Singleton : Decoder : Encoder : ClassTag](obj: A) = {
       msgMap += (implicitly[ClassTag[A]].runtimeClass.getName → (implicitly[Decoder[A]] → implicitly[Encoder[A]]))
     }
+  }
+
+  object Implicits {
+    trait MapKeyEncodeDecode[T] {
+      def encode(t: T): String
+      def decode(s: String): T
+    }
+    object MapKeyEncodeDecode {
+      implicit object UuidMKED extends MapKeyEncodeDecode[UUID] {
+        override def encode(t: UUID): String = t.toString
+        override def decode(s: String): UUID = UUID fromString s
+      }
+    }
+
+    implicit def nonStrKeyMapLikeEncode[K : MapKeyEncodeDecode, V : Encoder]: Encoder[Map[K, V]] = {
+      val mked = implicitly[MapKeyEncodeDecode[K]]
+
+      Encoder[Map[String, V]].contramap[Map[K, V]](_.map(e ⇒ mked.encode(e._1) → e._2))
+    }
+
+    implicit def nonStrKeyMapLikeDecode[K : MapKeyEncodeDecode, V : Decoder]: Decoder[Map[K, V]] = {
+      val mked = implicitly[MapKeyEncodeDecode[K]]
+
+      Decoder[Map[String, V]].map[Map[K, V]](_.map(e ⇒ mked.decode(e._1) → e._2))
+    }
+
+    implicit def listMapEncode[K : Encoder, V : Encoder]: Encoder[ListMap[K, V]] =
+      Encoder[Seq[(K, V)]].contramap[ListMap[K, V]](_.map(e ⇒ e._1 → e._2).toSeq)
+
+    implicit def listMapDecode[K : Decoder, V : Decoder]: Decoder[ListMap[K, V]] =
+      Decoder[Seq[(K, V)]].map(s ⇒ ListMap(s.map(e ⇒ e._1 → e._2): _*))
   }
 
   private val failureEntry = "__failure__"
