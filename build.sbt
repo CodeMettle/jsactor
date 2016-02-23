@@ -32,7 +32,9 @@ val commonSettings: Seq[Setting[_]] = Seq(
 lazy val root = project in file(".") settings (commonSettings ++ Seq(
   publishArtifact := false,
   publishArtifact in Compile := false
-)) aggregate (jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient, jsactorLoglevel, sharedUPickleJVM, sharedUPickleJS, bridgeServerUPickle, bridgeClientUPickle)
+)) aggregate(jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient, jsactorLoglevel, sharedUPickleJVM,
+  sharedUPickleJS, bridgeServerUPickle, bridgeClientUPickle, sharedCirceJVM, sharedCirceJS, bridgeServerCirce,
+  bridgeClientCirce)
 
 lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
   name := "jsactor",
@@ -60,6 +62,18 @@ lazy val jsactorBridgeSharedUPickle = (crossProject crossType CrossType.Pure in 
 lazy val sharedUPickleJVM = jsactorBridgeSharedUPickle.jvm dependsOn sharedJVM
 lazy val sharedUPickleJS = jsactorBridgeSharedUPickle.js dependsOn sharedJS
 
+lazy val jsactorBridgeSharedCirce = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared-circe")) settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-shared-circe",
+  libraryDependencies ++= Seq(
+    "io.circe" %%% "circe-core" % "0.3.0",
+    "io.circe" %%% "circe-generic" % "0.3.0",
+    "io.circe" %%% "circe-parser" % "0.3.0"
+  )
+): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
+
+lazy val sharedCirceJVM = jsactorBridgeSharedCirce.jvm dependsOn sharedJVM
+lazy val sharedCirceJS = jsactorBridgeSharedCirce.js dependsOn sharedJS
+
 lazy val bridgeServer = project in file("jsactor-bridge-server") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-server",
   libraryDependencies ++= Seq(
@@ -71,6 +85,10 @@ lazy val bridgeServerUPickle = project in file ("jsactor-bridge-server-upickle")
   name := "jsactor-bridge-server-upickle"
 )) dependsOn (bridgeServer, sharedUPickleJVM)
 
+lazy val bridgeServerCirce = project in file("jsactor-bridge-server-circe") settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-server-circe"
+)) dependsOn (bridgeServer, sharedCirceJVM)
+
 lazy val bridgeClient = project in file("jsactor-bridge-client") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-client"
 )) dependsOn (sharedJS, jsactor) enablePlugins ScalaJSPlugin
@@ -78,6 +96,10 @@ lazy val bridgeClient = project in file("jsactor-bridge-client") settings (commo
 lazy val bridgeClientUPickle = project in file("jsactor-bridge-client-upickle") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-client-upickle"
 )) dependsOn (bridgeClient, sharedUPickleJS) enablePlugins ScalaJSPlugin
+
+lazy val bridgeClientCirce = project in file("jsactor-bridge-client-circe") settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-client-circe"
+)) dependsOn (bridgeClient, sharedCirceJS) enablePlugins ScalaJSPlugin
 
 lazy val jsactorLoglevel = project in file("jsactor-loglevel") settings (commonSettings ++ Seq(
   name := "jsactor-loglevel",
