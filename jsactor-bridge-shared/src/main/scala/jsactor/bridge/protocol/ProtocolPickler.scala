@@ -11,7 +11,7 @@ package jsactor.bridge.protocol
  * @author steven
  *
  */
-private[bridge] trait ProtocolPickler[JsValue, PickleTo] {
+private[bridge] trait ProtocolPickler[PickleTo] {
   def pickle(obj: ProtocolMessage): PickleTo
   def pickle(bm: BridgedMessage): PickleTo
 

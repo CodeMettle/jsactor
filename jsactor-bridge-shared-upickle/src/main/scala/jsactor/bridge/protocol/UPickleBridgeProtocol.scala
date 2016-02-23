@@ -13,6 +13,7 @@ import upickle.default._
 import jsactor.bridge.protocol.UPickleBridgeProtocol.{MessageRegistry, failureEntry}
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author steven
@@ -35,7 +36,7 @@ object UPickleBridgeProtocol {
 }
 
 @implicitNotFound("Need an implicit UPickleBridgeProtocol in scope, consider creating an implicit object extending UPickleBridgeProtocol")
-trait UPickleBridgeProtocol extends BridgeProtocol[Js.Value, String] {
+trait UPickleBridgeProtocol extends BridgeProtocol[String] {
   private val registry = new MessageRegistry
   registerMessages(registry)
   private val msgMap = registry.msgMap
@@ -64,34 +65,33 @@ trait UPickleBridgeProtocol extends BridgeProtocol[Js.Value, String] {
     json.write(pickleJs(obj))
   }
 
-  def unpickleJs(js: Js.Value): Any = js match {
+  def unpickleJs(js: Js.Value): Try[Any] = js match {
     case obj: Js.Obj ⇒
       obj.value find (_._1 == failureEntry) match {
-        case None ⇒ throw Invalid.Data(obj, "Expected a failure entry")
+        case None ⇒ Failure(Invalid.Data(obj, "Expected a failure entry"))
 
-        case Some((_, arr: Js.Arr)) ⇒ unpickleJs(arr) match {
-          case t: Throwable ⇒ StatusFailure(t)
-          case _ ⇒ throw Invalid.Data(obj, "Expected a failure cause")
+        case Some((_, arr: Js.Arr)) ⇒ unpickleJs(arr) flatMap {
+          case t: Throwable ⇒ Success(StatusFailure(t))
+          case _ ⇒ Failure(Invalid.Data(obj, "Expected a failure cause"))
         }
 
-        case _ ⇒ throw Invalid.Data(obj, "Expected an array with failure cause")
+        case _ ⇒ Failure(Invalid.Data(obj, "Expected an array with failure cause"))
       }
 
     case arr: Js.Arr ⇒
       if (arr.value.size != 2)
-        throw Invalid.Data(arr, "Expected 2 elements")
+        Failure(Invalid.Data(arr, "Expected 2 elements"))
+      else {
+        val className = readJs[String](arr.value(0))
+        val jsVal = arr.value(1)
 
-      val className = readJs[String](arr.value(0))
-      val jsVal = arr.value(1)
+        val (reader, _) = msgMap.getOrElse(className, throw Invalid.Data(arr, s"$className is not registered"))
 
-      val (reader, _) = msgMap.getOrElse(className, throw Invalid.Data(arr, s"$className is not registered"))
+        Try(reader.read(jsVal))
+      }
 
-      reader.read(jsVal)
-
-    case jsval ⇒ throw Invalid.Data(jsval, "Expected an Array of 2 elements or a failure")
+    case jsval ⇒ Failure(Invalid.Data(jsval, "Expected an Array of 2 elements or a failure"))
   }
 
-  def unpickle(json: String): Any = {
-    unpickleJs(upickle.json.read(json))
-  }
+  def unpickle(json: String): Any = unpickleJs(upickle.json.read(json)).get
 }

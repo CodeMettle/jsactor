@@ -14,10 +14,8 @@ import scala.annotation.implicitNotFound
  *
  */
 @implicitNotFound("Need an implicit BridgeProtocol in scope, consider creating an implicit object extending BridgeProtocol")
-trait BridgeProtocol[JsValue, PickleTo] {
-  def pickleJs(obj: Any): JsValue
+trait BridgeProtocol[PickleTo] {
   def pickle(obj: Any): PickleTo
 
-  def unpickleJs(js: JsValue): Any
   def unpickle(json: PickleTo): Any
 }

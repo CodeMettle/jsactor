@@ -7,10 +7,8 @@
  */
 package jsactor.bridge.client
 
-import upickle._
-
 import jsactor.bridge.client.UPickleSocketManager.Config
-import jsactor.bridge.protocol.{BridgeProtocol, UPickleBridgeProtocol}
+import jsactor.bridge.protocol.UPickleBridgeProtocol
 import jsactor.{JsActorRefFactory, JsProps}
 import scala.concurrent.duration._
 
@@ -24,15 +22,15 @@ object UPickleSocketManager {
     }
 
   case class Config(wsUrl: String,
-                    clientBridgeActorProps: (BridgeProtocol[Js.Value, String]) ⇒ JsProps = UPickleClientBridgeActor.props(_),
+                    clientBridgeActorProps: (UPickleBridgeProtocol) ⇒ JsProps = UPickleClientBridgeActor.props(_),
                     webSocketActorProps: (String, JsProps) ⇒ JsProps = WebSocketActor.props,
                     initialReconnectTime: FiniteDuration = 125.millis,
-                    maxReconnectTime: FiniteDuration = 4.seconds) extends SocketManager.Config[Js.Value, String]
+                    maxReconnectTime: FiniteDuration = 4.seconds) extends SocketManager.Config[UPickleBridgeProtocol, String]
 
 }
 
 class UPickleSocketManager(val config: Config)
-                          (implicit val bridgeProtocol: UPickleBridgeProtocol) extends SocketManager[Js.Value, String]
+                          (implicit val bridgeProtocol: UPickleBridgeProtocol) extends SocketManager[UPickleBridgeProtocol, String]
 
 class UPickleWebSocketManager(config: UPickleSocketManager.Config, name: String = "socketManager")
                              (implicit arf: JsActorRefFactory, bridgeProtocol: UPickleBridgeProtocol)

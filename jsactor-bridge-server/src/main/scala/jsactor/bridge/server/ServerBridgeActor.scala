@@ -59,12 +59,12 @@ object ServerBridgeActor {
   }
 }
 
-trait ServerBridgeActor[JsValue, PickleTo] extends Actor with ActorLogging {
+trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
   protected implicit def pickleToCT: ClassTag[PickleTo]
   protected implicit def pickleWSS: WebSocketSendable[PickleTo]
-  protected implicit def bridgeProtocol: BridgeProtocol[JsValue, PickleTo]
+  protected implicit def bridgeProtocol: BridgeProtocol[PickleTo]
   def clientWebSocket: ActorRef
-  protected def newProtocolPickler: ProtocolPickler[JsValue, PickleTo]
+  protected def newProtocolPickler: ProtocolPickler[PickleTo]
   private val protocolPickler = newProtocolPickler
 
   private var clientProxies = Map.empty[String, ActorRef]
@@ -108,7 +108,7 @@ trait ServerBridgeActor[JsValue, PickleTo] extends Actor with ActorLogging {
     val stc = ServerToClientMessage(BridgeId(clientPath, serverPath), msg)
 
     Try(protocolPickler.pickle(stc)) match {
-      case Failure(t) ⇒ log.error(t, "Error pickling {}", stc)
+      case Failure(t) ⇒ log.error(t, "Error pickling {}, pp = {}", stc, protocolPickler)
 
       case Success(json) ⇒ clientWebSocket sendPickledMsg json
     }

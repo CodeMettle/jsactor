@@ -11,6 +11,7 @@ import upickle._
 import upickle.default._
 
 import jsactor.bridge.protocol.UPickleProtocolPickler.{ctsPrefix, stcPrefix}
+import scala.util.{Failure, Try}
 
 /**
  * @author steven
@@ -21,25 +22,22 @@ private[bridge] object UPickleProtocolPickler {
   private val stcPrefix = "__stcBridge__::"
 }
 
-private[bridge] class UPickleProtocolPickler(implicit bridgeProtocol: BridgeProtocol[Js.Value, String])
-  extends ProtocolPickler[Js.Value, String] {
+private[bridge] class UPickleProtocolPickler(implicit bridgeProtocol: UPickleBridgeProtocol)
+  extends ProtocolPickler[String] {
 
   private def pickleBridgedMsg(bm: BridgedMessage): Js.Arr = {
     Js.Arr(writeJs(bm.bridgeId), bridgeProtocol.pickleJs(bm.message))
   }
 
-  private def unpickleBridgedMsg[PM <: BridgedMessage](jsVal: Js.Value, ctor: (BridgeId, Any) ⇒ PM): PM = {
+  private def unpickleBridgedMsg[PM <: BridgedMessage](jsVal: Js.Value, ctor: (BridgeId, Any) ⇒ PM): Try[PM] = {
     jsVal match {
-      case jsArr: Js.Arr ⇒
-        if (jsArr.value.size != 2)
-          throw Invalid.Data(jsArr, "Expected 2 elements")
+      case jsArr: Js.Arr if jsArr.value.size == 2 ⇒
+        val bidT = Try(readJs[BridgeId](jsArr.value(0)))
+        val msgT = bridgeProtocol.unpickleJs(jsArr.value(1))
 
-        val bid = readJs[BridgeId](jsArr.value(0))
-        val msg = bridgeProtocol.unpickleJs(jsArr.value(1))
+        for (bid ← bidT; msg ← msgT) yield ctor(bid, msg)
 
-        ctor(bid, msg)
-
-      case _ ⇒ throw Invalid.Data(jsVal, "Expected a JSON array")
+      case _ ⇒ Failure(Invalid.Data(jsVal, "Expected an array of 2 elements"))
     }
   }
 
@@ -52,11 +50,11 @@ private[bridge] class UPickleProtocolPickler(implicit bridgeProtocol: BridgeProt
   }
 
   private implicit val ctsReader = Reader[ClientToServerMessage] {
-    case jsVal ⇒ unpickleBridgedMsg(jsVal, ClientToServerMessage.apply)
+    case jsVal ⇒ unpickleBridgedMsg(jsVal, ClientToServerMessage.apply).get
   }
 
   private implicit val stcReader = Reader[ServerToClientMessage] {
-    case jsVal ⇒ unpickleBridgedMsg(jsVal, ServerToClientMessage.apply)
+    case jsVal ⇒ unpickleBridgedMsg(jsVal, ServerToClientMessage.apply).get
   }
 
   def pickle(obj: ProtocolMessage): String = write(obj)

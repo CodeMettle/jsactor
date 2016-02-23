@@ -41,13 +41,13 @@ object ClientBridgeActor {
   private case class SendMessageToServer(clientPath: JsActorPath, serverPath: String, clientActor: JsActorRef, message: Any)
 }
 
-trait ClientBridgeActor[JsValue, PickleTo] extends JsActor with JsActorLogging {
+trait ClientBridgeActor[PickleTo] extends JsActor with JsActorLogging {
   protected implicit def pickleWSS: WebSocketSendable[PickleTo]
   protected implicit def pickleCT: ClassTag[PickleTo]
 
-  implicit def bridgeProtocol: BridgeProtocol[JsValue, PickleTo]
+  implicit def bridgeProtocol: BridgeProtocol[PickleTo]
 
-  protected def newProtocolPickler: ProtocolPickler[JsValue, PickleTo]
+  protected def newProtocolPickler: ProtocolPickler[PickleTo]
 
   private val protocolPickler = newProtocolPickler
 
