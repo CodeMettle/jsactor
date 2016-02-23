@@ -49,7 +49,7 @@ trait UPickleBridgeProtocol extends BridgeProtocol[Js.Value, String] {
 
   def pickleJs(obj: Any): Js.Value = {
     obj match {
-      case StatusFailure(cause) ⇒ Js.Obj(failureEntry → pickleJs(obj))
+      case StatusFailure(cause) ⇒ Js.Obj(failureEntry → pickleJs(cause))
 
       case _ ⇒
         val className = obj.getClass.getName
