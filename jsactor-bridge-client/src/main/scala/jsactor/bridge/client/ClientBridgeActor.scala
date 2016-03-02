@@ -41,9 +41,11 @@ object ClientBridgeActor {
   private case class SendMessageToServer(clientPath: JsActorPath, serverPath: String, clientActor: JsActorRef, message: Any)
 }
 
-trait ClientBridgeActor[PickleTo] extends JsActor with JsActorLogging {
+trait ClientBridgeActor[PickleTo, RecvType] extends JsActor with JsActorLogging {
+  import scala.language.implicitConversions
   protected implicit def pickleWSS: WebSocketSendable[PickleTo]
-  protected implicit def pickleCT: ClassTag[PickleTo]
+  protected implicit def recvCT: ClassTag[RecvType]
+  protected implicit def recvToPickleFmt(r: RecvType): PickleTo
 
   implicit def bridgeProtocol: BridgeProtocol[PickleTo]
 
@@ -112,7 +114,7 @@ trait ClientBridgeActor[PickleTo] extends JsActor with JsActorLogging {
       sendMessageToServer(FindServerActor(BridgeId(sender().path.toString, serverPath)))
 
     case WebSocketActor.Messages.MessageReceived(data) ⇒ data match {
-      case json: PickleTo ⇒ Try(protocolPickler.unpickle(json)) match {
+      case json: RecvType ⇒ Try(protocolPickler.unpickle(json)) match {
         case Failure(t) ⇒ log.error(s"Error unpickling $json: $t")
 
         case Success(msg) ⇒ msg match {

@@ -22,11 +22,14 @@ object CirceClientBridgeActor {
 }
 
 class CirceClientBridgeActor(implicit val bridgeProtocol: CirceBridgeProtocol)
-  extends ClientBridgeActor[String] {
+  extends ClientBridgeActor[String, String] {
+  import scala.language.implicitConversions
 
   override protected implicit def pickleWSS: WebSocketSendable[String] = WebSocketSendable.StrWSS
 
-  override protected implicit def pickleCT: ClassTag[String] = ClassTag(classOf[String])
+  override protected implicit def recvCT: ClassTag[String] = ClassTag(classOf[String])
+
+  override protected implicit def recvToPickleFmt(r: String): String = r
 
   override protected def newProtocolPickler = new CirceProtocolPickler
 

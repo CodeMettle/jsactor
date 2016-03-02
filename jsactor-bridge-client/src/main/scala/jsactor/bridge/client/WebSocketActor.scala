@@ -76,6 +76,7 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
     log.trace(s"Attempting to connect to $wsUrl")
 
     val webSocket = new dom.WebSocket(wsUrl)
+    webSocket.binaryType = "arraybuffer"
     webSocket.onerror = (evt: dom.ErrorEvent) ⇒ self ! OnError(evt)
     webSocket.onopen = (evt: dom.Event) ⇒ self ! OnOpen(evt)
     webSocket.onclose = (evt: dom.CloseEvent) ⇒ self ! OnClose(evt)
