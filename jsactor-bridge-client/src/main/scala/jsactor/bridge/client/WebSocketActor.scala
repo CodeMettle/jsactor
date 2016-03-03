@@ -59,6 +59,13 @@ object WebSocketActor {
     implicit object TypArrWSS extends WebSocketSendable[js.typedarray.ArrayBuffer] {
       override def send(ws: dom.WebSocket, msg: js.typedarray.ArrayBuffer): Unit = ws send msg
     }
+    implicit object ByteArrWSS extends WebSocketSendable[Array[Byte]] {
+      override def send(ws: dom.WebSocket, msg: Array[Byte]): Unit = {
+        import scala.scalajs.js.typedarray._
+
+        ws send msg.toTypedArray.buffer
+      }
+    }
     implicit class WSSWebSocket(val ws: dom.WebSocket) extends AnyVal {
       def send[T : WebSocketSendable](msg: T) = implicitly[WebSocketSendable[T]].send(ws, msg)
     }
