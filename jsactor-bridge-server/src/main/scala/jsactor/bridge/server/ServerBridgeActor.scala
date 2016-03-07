@@ -96,7 +96,11 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
   }
 
   private def sendMessageToClient(pm: ProtocolMessage) = {
-    clientWebSocket sendPickledMsg protocolPickler.pickle(pm)
+    Try(protocolPickler.pickle(pm)) match {
+      case Failure(t) ⇒ log.error(t, "Error pickling {}, pp = {}", pm, protocolPickler)
+
+      case Success(json) ⇒ clientWebSocket sendPickledMsg json
+    }
   }
 
   private def sendMessageToClient(clientPath: String, serverPath: String, message: Any) = {
