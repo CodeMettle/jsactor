@@ -77,7 +77,7 @@ lazy val sharedCirceJS = jsactorBridgeSharedCirce.js dependsOn sharedJS
 lazy val jsactorBridgeSharedBooPickle = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared-boopickle")) settings (commonSettings ++ Seq(
   name := "jsactor-bridge-shared-boopickle",
   libraryDependencies ++= Seq(
-    "me.chrons" %%% "boopickle" % "1.1.2"
+    "me.chrons" %%% "boopickle" % "1.1.3"
   )
 ): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
 
