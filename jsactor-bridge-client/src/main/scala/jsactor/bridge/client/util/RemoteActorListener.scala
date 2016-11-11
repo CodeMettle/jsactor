@@ -28,6 +28,7 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
   def onConnect(serverActor: JsActorRef): Unit
   def whenConnected(serverActor: JsActorRef): Receive
   def retryTimeout: FiniteDuration = 2.seconds
+  protected def onDisconnect() = {}
 
   private var websocket = Option.empty[JsActorRef]
 
@@ -78,12 +79,14 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
       serverActor = None
       context become receive
       self ! TryConnect
+      onDisconnect()
 
     case SocketManager.Events.WebSocketDisconnected | SocketManager.Events.WebSocketShutdown ⇒
       log.trace("WebSocket disconnected")
       serverActor = None
       websocket = None
       context become receive
+      onDisconnect()
   }
 }
 
