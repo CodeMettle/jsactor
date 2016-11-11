@@ -59,6 +59,7 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
     case ServerActorFound(_) ⇒
       val act = sender()
       log.trace("Got actor ", act.toString, " for ", actorPath)
+      serverActor = Some(act)
       context watch act
       context setReceiveTimeout Duration.Undefined
       onConnect(act)
@@ -70,6 +71,8 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
 
       websocket = None
 
+    case _: JsTerminated ⇒ // already disconnected from websocketdisconnect
+
     case msg ⇒ stash()
   }
 
@@ -80,6 +83,8 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
       context become receive
       self ! TryConnect
       onDisconnect()
+
+    case JsTerminated(act) ⇒ log.warn(s"Received notification of unknown actor $act")
 
     case SocketManager.Events.WebSocketDisconnected | SocketManager.Events.WebSocketShutdown ⇒
       log.trace("WebSocket disconnected")
