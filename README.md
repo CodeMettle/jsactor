@@ -21,9 +21,9 @@ hierarchy, a well-defined lifecycle, an `EventStream`, and so on.
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.codemettle.jsactor" %%% "jsactor" % "0.6.1",
-  "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.6.1" // if using jsactor-bridge
-  "com.codemettle.jsactor" %%% "jsactor-loglevel" % "0.6.1" // to use the LogLevel logging adapter
+  "com.codemettle.jsactor" %%% "jsactor" % "0.6.9",
+  "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.6.9" // if using jsactor-bridge
+  "com.codemettle.jsactor" %%% "jsactor-loglevel" % "0.6.9" // to use the LogLevel logging adapter
 )
 ```
 
@@ -97,7 +97,7 @@ objects change then the server pushes them.
 ```scala
 // project with model classes shared between client & server, cross-compiled to JVM & JS
  ...
-libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-shared" % "0.6.1"
+libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-shared" % "0.6.9"
  ...
 ```
 
@@ -134,7 +134,7 @@ object MyProjectProtocol extends BridgeProtocol {
 ```scala
 // server project; also needs to depend on the shared model project
  ...
-libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-server" % "0.6.1"
+libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-server" % "0.6.9"
  ...
 ```
 
@@ -172,7 +172,7 @@ object MyController extends Controller {
 ```scala
 // client project; also needs to depend on the shared model project
  ...
-libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.6.1"
+libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.6.9"
  ...
 ```
 
