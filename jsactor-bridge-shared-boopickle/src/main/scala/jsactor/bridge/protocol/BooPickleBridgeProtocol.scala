@@ -8,7 +8,6 @@
 package jsactor.bridge.protocol
 
 import java.nio.ByteBuffer
-import java.{util ⇒ ju}
 
 import boopickle.DefaultBasic._
 import boopickle.{PickleState, UnpickleState}
@@ -57,7 +56,7 @@ trait BooPickleBridgeProtocol extends BridgeProtocol[Array[Byte]] {
 
       implicit val pickler = msgMap.getOrElse(className, sys.error(s"$className is not registered")).asInstanceOf[Pickler[Any]]
       val pickled = {
-        val state = PickleState.Default
+        val state = PickleState.pickleStateSpeed
         pickler.pickle(obj)(state)
         state.toByteBuffer
       }

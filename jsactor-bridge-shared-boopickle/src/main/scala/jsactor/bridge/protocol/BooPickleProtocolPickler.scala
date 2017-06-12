@@ -23,10 +23,16 @@ private[bridge] object BooPickleProtocolPickler {
 }
 
 private[bridge] class BooPickleProtocolPickler(implicit bridgeProtocol: BooPickleBridgeProtocol) extends ProtocolPickler[Array[Byte]] {
-  private implicit val bmPickler = compositePickler[BridgedMessage]
-  private implicit val ctsPickler = transformPickler[ClientToServerMessage, (BridgeId, ByteBuffer)](cts ⇒ (cts.bridgeId, bridgeProtocol.pickleBB(cts.message)), e ⇒ ClientToServerMessage(e._1, bridgeProtocol.unpickleBB(e._2).get))
-  private implicit val stcPickler = transformPickler[ServerToClientMessage, (BridgeId, ByteBuffer)](stc ⇒ (stc.bridgeId, bridgeProtocol.pickleBB(stc.message)), e ⇒ ServerToClientMessage(e._1, bridgeProtocol.unpickleBB(e._2).get))
-  bmPickler.addConcreteType[ClientToServerMessage].addConcreteType[ServerToClientMessage]
+  private implicit val ctsPickler = transformPickler[ClientToServerMessage, (BridgeId, ByteBuffer)](
+    e ⇒ ClientToServerMessage(e._1, bridgeProtocol.unpickleBB(e._2).get))(
+    cts ⇒ (cts.bridgeId, bridgeProtocol.pickleBB(cts.message)))
+  private implicit val stcPickler = transformPickler[ServerToClientMessage, (BridgeId, ByteBuffer)](
+    e ⇒ ServerToClientMessage(e._1, bridgeProtocol.unpickleBB(e._2).get))(
+    stc ⇒ (stc.bridgeId, bridgeProtocol.pickleBB(stc.message)))
+  private implicit val bmPickler =
+    compositePickler[BridgedMessage]
+      .addConcreteType[ClientToServerMessage]
+      .addConcreteType[ServerToClientMessage]
 
   override def pickle(obj: ProtocolMessage): Array[Byte] = bb2arr(Pickle.intoBytes(pmId → Pickle.intoBytes(obj)))
   override def pickle(bm: BridgedMessage): Array[Byte] = bb2arr(Pickle.intoBytes(bmId → Pickle.intoBytes(bm)))
