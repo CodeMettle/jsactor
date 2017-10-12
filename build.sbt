@@ -3,8 +3,15 @@ import sbt.Keys._
 
 val commonSettings: Seq[Setting[_]] = Seq(
   organization := "com.codemettle.jsactor",
-  scalaVersion := "2.11.6",
+  crossScalaVersions := Seq("2.11.11", "2.12.3"),
+  scalaVersion := crossScalaVersions.value.last,
   scalacOptions := Seq("-Xlint", "-unchecked", "-deprecation", "-feature"),
+  scalacOptions += {
+    CrossVersion partialVersion scalaVersion.value match {
+      case Some((x, y)) if x >= 2 && y >= 12 ⇒ "-target:jvm-1.8"
+      case _ ⇒ "-target:jvm-1.6"
+    }
+  },
   startYear := Some(2015),
   homepage := Some(url("https://github.com/CodeMettle/jsactor")),
   organizationName := "CodeMettle, LLC",
@@ -25,11 +32,12 @@ val commonSettings: Seq[Setting[_]] = Seq(
     </developers>
   },
   releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+  releaseCrossBuild := true,
   publishMavenStyle := true,
   sonatypeProfileName := "com.codemettle"
 )
 
-lazy val root = project in file(".") settings (commonSettings ++ Seq(
+lazy val jsactorProject = project in file(".") settings (commonSettings ++ Seq(
   publishArtifact := false,
   publishArtifact in Compile := false
 )) aggregate(jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient, jsactorLoglevel, sharedUPickleJVM,
@@ -38,10 +46,8 @@ lazy val root = project in file(".") settings (commonSettings ++ Seq(
 
 lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
   name := "jsactor",
-  persistLauncher in Compile := true,
-  persistLauncher in Test := false,
   libraryDependencies ++= Seq(
-    "org.scala-js" %%% "scalajs-dom" % "0.9.0"
+    "org.scala-js" %%% "scalajs-dom" % "0.9.3"
   )
 )) enablePlugins ScalaJSPlugin
 
@@ -55,7 +61,7 @@ lazy val sharedJS = jsactorBridgeShared.js
 lazy val jsactorBridgeSharedUPickle = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared-upickle")) settings (commonSettings ++ Seq(
   name := "jsactor-bridge-shared-upickle",
   libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "upickle" % "0.3.7"
+    "com.lihaoyi" %%% "upickle" % "0.4.4"
   )
 ): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
 
@@ -65,9 +71,9 @@ lazy val sharedUPickleJS = jsactorBridgeSharedUPickle.js dependsOn sharedJS
 lazy val jsactorBridgeSharedCirce = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared-circe")) settings (commonSettings ++ Seq(
   name := "jsactor-bridge-shared-circe",
   libraryDependencies ++= Seq(
-    "io.circe" %%% "circe-core" % "0.3.0",
-    "io.circe" %%% "circe-generic" % "0.3.0",
-    "io.circe" %%% "circe-parser" % "0.3.0"
+    "io.circe" %%% "circe-core" % "0.6.1",
+    "io.circe" %%% "circe-generic" % "0.6.1",
+    "io.circe" %%% "circe-parser" % "0.6.1"
   )
 ): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
 
@@ -87,7 +93,7 @@ lazy val sharedBooPickleJS = jsactorBridgeSharedBooPickle.js dependsOn sharedJS
 lazy val bridgeServer = project in file("jsactor-bridge-server") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-server",
   libraryDependencies ++= Seq(
-    "com.typesafe.akka" %% "akka-actor" % "2.3.10"
+    "com.typesafe.akka" %% "akka-actor" % "2.4.19"
   )
 )) dependsOn sharedJVM
 
@@ -121,5 +127,5 @@ lazy val bridgeClientBooPickle = project in file("jsactor-bridge-client-boopickl
 
 lazy val jsactorLoglevel = project in file("jsactor-loglevel") settings (commonSettings ++ Seq(
   name := "jsactor-loglevel",
-  libraryDependencies += "com.codemettle.scalajs" %%% "loglevel" % "1.0.0"
+  libraryDependencies += "com.codemettle.scalajs" %%% "loglevel" % "1.0.1"
 )) dependsOn jsactor enablePlugins ScalaJSPlugin

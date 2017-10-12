@@ -26,29 +26,29 @@ private[bridge] object CirceProtocolPickler {
 private[bridge] class CirceProtocolPickler(implicit bridgeProtocol: CirceBridgeProtocol)
   extends ProtocolPickler[String] {
 
+  private implicit val ctsEncoder: Encoder[ClientToServerMessage] = Encoder.instance[ClientToServerMessage] {
+    cts ⇒ pickleBridgedMsg(cts)
+  }
+
+  private implicit val stcEncoder: Encoder[ServerToClientMessage] = Encoder.instance[ServerToClientMessage] {
+    stc ⇒ pickleBridgedMsg(stc)
+  }
+
+  private implicit val ctsDecoder: Decoder[ClientToServerMessage] =
+    Decoder.instance(c ⇒ unpickleBridgedMsg(c, ClientToServerMessage.apply))
+
+  private implicit val stcDecoder: Decoder[ServerToClientMessage] =
+    Decoder.instance(c ⇒ unpickleBridgedMsg(c, ServerToClientMessage.apply))
+
   private def pickleBridgedMsg(bm: BridgedMessage): Json = {
     Encoder[(BridgeId, Json)].apply(bm.bridgeId → bridgeProtocol.pickleJs(bm.message))
   }
 
   private def unpickleBridgedMsg[PM <: BridgedMessage](jsC: HCursor, ctor: (BridgeId, Any) ⇒ PM): Decoder.Result[PM] = {
-    jsC.as[(BridgeId, Json)] flatMap {
-      case (bid, jsVal) ⇒ bridgeProtocol.unpickleJs(jsVal).map(msg ⇒ ctor(bid, msg))
+    jsC.as[(BridgeId, Json)].right flatMap {
+      case (bid, jsVal) ⇒ bridgeProtocol.unpickleJs(jsVal).right.map(msg ⇒ ctor(bid, msg))
     }
   }
-
-  private implicit val ctsEncoder = Encoder.instance[ClientToServerMessage] {
-    case cts ⇒ pickleBridgedMsg(cts)
-  }
-
-  private implicit val stcEncoder = Encoder.instance[ServerToClientMessage] {
-    case stc ⇒ pickleBridgedMsg(stc)
-  }
-
-  private implicit val ctsDecoder =
-    Decoder.instance(c ⇒ unpickleBridgedMsg(c, ClientToServerMessage.apply))
-
-  private implicit val stcDecoder =
-    Decoder.instance(c ⇒ unpickleBridgedMsg(c, ServerToClientMessage.apply))
 
   override def pickle(obj: ProtocolMessage): String = obj.asJson.noSpaces
   override def pickle(bm: BridgedMessage): String = bm match {
@@ -62,6 +62,6 @@ private[bridge] class CirceProtocolPickler(implicit bridgeProtocol: CirceBridgeP
     else if (str startsWith stcPrefix)
       decode[ServerToClientMessage](str substring stcPrefix.length)
     else
-      decode[ProtocolMessage](str)).valueOr(throw _)
+      decode[ProtocolMessage](str)).valueOrThrow
   }
 }

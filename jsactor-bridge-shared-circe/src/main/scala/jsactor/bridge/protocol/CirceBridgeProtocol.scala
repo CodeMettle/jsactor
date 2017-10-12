@@ -9,11 +9,8 @@ package jsactor.bridge.protocol
 
 import java.util.UUID
 
-import cats.data.Xor
 import io.circe._
-import io.circe.generic.auto._
 import io.circe.parser._
-import io.circe.syntax._
 
 import jsactor.bridge.protocol.CirceBridgeProtocol.{MessageRegistry, failureEntry, successEntry}
 import scala.annotation.implicitNotFound
@@ -105,24 +102,24 @@ trait CirceBridgeProtocol extends BridgeProtocol[String] {
   private def unpickleCursor(c: ACursor): Decoder.Result[Any] = {
     def error(err: String) = DecodingFailure(err, Nil)
 
-    c.as[(String, Json)] flatMap {
-      case (`failureEntry`, jsVal) ⇒ unpickleCursor(ACursor ok jsVal.hcursor) flatMap {
-        case t: Throwable ⇒ Xor right StatusFailure(t)
-        case other ⇒ Xor left error(s"Expected Throwable for failure, got $other")
+    c.as[(String, Json)].right flatMap {
+      case (`failureEntry`, jsVal) ⇒ unpickleCursor(ACursor ok jsVal.hcursor).right flatMap {
+        case t: Throwable ⇒ Right(StatusFailure(t))
+        case other ⇒ Left(error(s"Expected Throwable for failure, got $other"))
       }
 
-      case (`successEntry`, jsVal) ⇒ jsVal.as[(String, Json)] flatMap {
+      case (`successEntry`, jsVal) ⇒ jsVal.as[(String, Json)].right flatMap {
         case (className, js) ⇒ msgMap get className match {
-          case None ⇒ Xor left error(s"$className is not registered")
+          case None ⇒ Left(error(s"$className is not registered"))
           case Some((decoder, _)) ⇒ decoder.apply(js.hcursor)
         }
       }
 
-      case (other, _) ⇒ Xor left error(s"Expected failure or success, got $other")
+      case (other, _) ⇒ Left(error(s"Expected failure or success, got $other"))
     }
   }
 
   def unpickleJs(js: Json): Decoder.Result[Any] = unpickleCursor(ACursor ok js.hcursor)
 
-  def unpickle(json: String): Any = parse(json).flatMap(unpickleJs).valueOr(throw _)
+  def unpickle(json: String): Any = parse(json).right.flatMap(unpickleJs).valueOrThrow
 }
