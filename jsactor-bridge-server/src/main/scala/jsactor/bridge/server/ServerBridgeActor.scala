@@ -130,6 +130,18 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
     outstandingIdentifies -= serverPath
   }
 
+  /**
+    * Subclasses can override this method to intercept, transform or redirect incoming messages.
+    *
+    * This method will be called only if a message is bound for a valid server actor.
+    *
+    * @param msg The incoming message.
+    * @param clientProxy A proxy to the client actor.
+    * @param serverActor The server actor destination.
+    */
+  protected def dispatchIncomingMessage(msg: Any, clientProxy: ActorRef, serverActor: ActorRef) =
+    serverActor.tell(msg, clientProxy)
+
   def receive = {
     case ActorIdentity(serverPath: String, actorOpt) ⇒ fulfillOutstandingIdentify(serverPath, actorOpt)
 
@@ -161,7 +173,7 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
 
           val clientProxy = getClientProxy(bridgeId)
           getServerActor(bridgeId) onSuccess {
-            case Some(serverActor) ⇒ serverActor.tell(msg, clientProxy)
+            case Some(serverActor) ⇒ dispatchIncomingMessage(msg, clientProxy, serverActor)
 
             case None ⇒ sendMessageToClient(ServerActorNotFound(bridgeId))
           }
