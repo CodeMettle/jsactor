@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package jsactor.bridge.protocol;
+
+message MessageWrapper {
+    oneof sealed_value {
+        NormalMessage normal = 1;
+        FailureMessage failure = 2;
+    }
+}
+
+message NormalMessage {
+    string className = 1;
+    bytes bytes = 2;
+}
+
+message FailureMessage {
+    bytes bytes = 1;
+}
+
+message PBBridgeId {
+    string clientPath = 1;
+    string serverPath = 2;
+}
+
+message PBBridgedOrProtocolMessage {
+    oneof sealed_value {
+        PBClientToServerMessage cts = 1;
+        PBServerToClientMessage stc = 2;
+        PBClientActorTerminated clientTerminated = 3;
+        PBServerActorTerminated serverTerminated = 4;
+        PBFindServerActor findServer = 5;
+        PBServerActorFound foundServer = 6;
+        PBServerActorNotFound didntFindServer = 7;
+    }
+}
+
+message PBClientToServerMessage {
+    PBBridgeId bridgeId = 1;
+    bytes message = 2;
+}
+
+message PBServerToClientMessage {
+    PBBridgeId bridgeId = 1;
+    bytes message = 2;
+}
+
+message PBClientActorTerminated {
+    string clientPath = 1;
+}
+
+message PBServerActorTerminated {
+    string serverPath = 1;
+}
+
+message PBFindServerActor {
+    PBBridgeId bridgeId = 1;
+}
+
+message PBServerActorFound {
+    PBBridgeId bridgeId = 1;
+}
+
+message PBServerActorNotFound {
+    PBBridgeId bridgeId = 1;
+}

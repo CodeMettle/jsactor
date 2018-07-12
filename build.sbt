@@ -42,7 +42,8 @@ lazy val jsactorProject = project in file(".") settings (commonSettings ++ Seq(
   publishArtifact in Compile := false
 )) aggregate(jsactor, sharedJVM, sharedJS, bridgeServer, bridgeClient, jsactorLoglevel, sharedUPickleJVM,
   sharedUPickleJS, bridgeServerUPickle, bridgeClientUPickle, sharedCirceJVM, sharedCirceJS, bridgeServerCirce,
-  bridgeClientCirce, sharedBooPickleJVM, sharedBooPickleJS, bridgeServerBooPickle, bridgeClientBooPickle)
+  bridgeClientCirce, sharedBooPickleJVM, sharedBooPickleJS, bridgeServerBooPickle, bridgeClientBooPickle,
+  sharedModelScalaPBJVM, sharedModelScalaPBJS, sharedScalaPBJVM, sharedScalaPBJS, bridgeServerScalaPB, bridgeClientScalaPB)
 
 lazy val jsactor = project in file("jsactor") settings (commonSettings ++ Seq(
   name := "jsactor",
@@ -90,6 +91,27 @@ lazy val jsactorBridgeSharedBooPickle = (crossProject crossType CrossType.Pure i
 lazy val sharedBooPickleJVM = jsactorBridgeSharedBooPickle.jvm dependsOn sharedJVM
 lazy val sharedBooPickleJS = jsactorBridgeSharedBooPickle.js dependsOn sharedJS
 
+lazy val jsactorBridgeSharedScalaPBModel = (crossProject crossType CrossType.Pure in file ("jsactor-bridge-shared-scalapb-model")) settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-shared-scalapb-model",
+  libraryDependencies ++= Seq(
+    "com.thesamet.scalapb" %%% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion
+  ),
+  PB.targets in Compile := Seq(
+    scalapb.gen(flatPackage = true) → (sourceManaged in Compile).value
+  ),
+  PB.protoSources in Compile := Seq(file("jsactor-bridge-shared-scalapb-model") / "src" / "main" / "protobuf")
+): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
+
+lazy val sharedModelScalaPBJVM = jsactorBridgeSharedScalaPBModel.jvm
+lazy val sharedModelScalaPBJS = jsactorBridgeSharedScalaPBModel.js
+
+lazy val jsactorBridgeSharedScalaPB = (crossProject crossType CrossType.Pure in file("jsactor-bridge-shared-scalapb")) settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-shared-scalapb"
+): _*) jsConfigure (_ enablePlugins ScalaJSPlugin)
+
+lazy val sharedScalaPBJVM = jsactorBridgeSharedScalaPB.jvm dependsOn (sharedJVM, sharedModelScalaPBJVM)
+lazy val sharedScalaPBJS = jsactorBridgeSharedScalaPB.js dependsOn (sharedJS, sharedModelScalaPBJS)
+
 lazy val bridgeServer = project in file("jsactor-bridge-server") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-server",
   libraryDependencies ++= Seq(
@@ -109,6 +131,10 @@ lazy val bridgeServerBooPickle = project in file("jsactor-bridge-server-boopickl
   name := "jsactor-bridge-server-boopickle"
 )) dependsOn (bridgeServer, sharedBooPickleJVM)
 
+lazy val bridgeServerScalaPB = project in file("jsactor-bridge-server-scalapb") settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-server-scalapb"
+)) dependsOn (bridgeServer, sharedScalaPBJVM)
+
 lazy val bridgeClient = project in file("jsactor-bridge-client") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-client"
 )) dependsOn (sharedJS, jsactor) enablePlugins ScalaJSPlugin
@@ -124,6 +150,10 @@ lazy val bridgeClientCirce = project in file("jsactor-bridge-client-circe") sett
 lazy val bridgeClientBooPickle = project in file("jsactor-bridge-client-boopickle") settings (commonSettings ++ Seq(
   name := "jsactor-bridge-client-boopickle"
 )) dependsOn (bridgeClient, sharedBooPickleJS) enablePlugins ScalaJSPlugin
+
+lazy val bridgeClientScalaPB = project in file("jsactor-bridge-client-scalapb") settings (commonSettings ++ Seq(
+  name := "jsactor-bridge-client-scalapb"
+)) dependsOn (bridgeClient, sharedScalaPBJS) enablePlugins ScalaJSPlugin
 
 lazy val jsactorLoglevel = project in file("jsactor-loglevel") settings (commonSettings ++ Seq(
   name := "jsactor-loglevel",
