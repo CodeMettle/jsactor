@@ -70,7 +70,6 @@ object JsFSM {
   private[jsactor] case class Timer(name: String, msg: Any, repeat: Boolean, generation: Int)(context: JsActorContext) {
     private var ref: Option[JsCancellable] = _
     private val scheduler = context.system.scheduler
-    private implicit val executionContext = context.dispatcher
 
     def schedule(actor: JsActorRef, timeout: FiniteDuration): Unit =
       ref = Some(
@@ -308,6 +307,8 @@ trait JsFSM[S, D] extends JsActor with JsListeners with JsActorLogging {
    * called, not only the first one matching.</b>
    */
   final def onTransition(transitionHandler: TransitionHandler): Unit = transitionEvent :+= transitionHandler
+
+  import scala.language.implicitConversions
 
   /**
    * Convenience wrapper for using a total function instead of a partial

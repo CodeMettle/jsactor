@@ -27,15 +27,13 @@ object ServerBridgeActor {
       log.debug("{} created for clientActor {}", self.path, clientPath)
     }
 
-    def receive = {
+    override def receive: Receive = {
       case msg ⇒ context.parent ! SendMessageToClient(clientPath, sender().path, sender(), msg)
     }
   }
 
   private object ClientActorProxy {
-    def props(clientPath: String) = {
-      Props(new ClientActorProxy(clientPath))
-    }
+    def props(clientPath: String) = Props(new ClientActorProxy(clientPath))
   }
 
   private case class SendMessageToClient(clientPath: String, serverPath: ActorPath, serverActor: ActorRef, message: Any)
@@ -59,6 +57,7 @@ object ServerBridgeActor {
   }
 }
 
+//noinspection ActorMutableStateInspection
 trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
   protected implicit def pickleToCT: ClassTag[PickleTo]
   protected implicit def pickleWSS: WebSocketSendable[PickleTo]
@@ -95,7 +94,7 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
     }
   }
 
-  private def sendMessageToClient(pm: ProtocolMessage) = {
+  private def sendMessageToClient(pm: ProtocolMessage): Unit = {
     Try(protocolPickler.pickle(pm)) match {
       case Failure(t) ⇒ log.error(t, "Error pickling {}, pp = {}", pm, protocolPickler)
 
@@ -103,7 +102,7 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
     }
   }
 
-  private def sendMessageToClient(clientPath: String, serverPath: String, message: Any) = {
+  private def sendMessageToClient(clientPath: String, serverPath: String, message: Any): Unit = {
     val msg = message match {
       case Status.Failure(t) ⇒ StatusFailure(t)
       case _ ⇒ message
@@ -118,7 +117,7 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
     }
   }
 
-  private def fulfillOutstandingIdentify(serverPath: String, actorOpt: Option[ActorRef]) = {
+  private def fulfillOutstandingIdentify(serverPath: String, actorOpt: Option[ActorRef]): Unit = {
     if (!serverActors.contains(serverPath)) {
       actorOpt foreach (serverActor ⇒ {
         context watch serverActor
@@ -139,10 +138,10 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
     * @param clientProxy A proxy to the client actor.
     * @param serverActor The server actor destination.
     */
-  protected def dispatchIncomingMessage(msg: Any, clientProxy: ActorRef, serverActor: ActorRef) =
+  protected def dispatchIncomingMessage(msg: Any, clientProxy: ActorRef, serverActor: ActorRef): Unit =
     serverActor.tell(msg, clientProxy)
 
-  def receive = {
+  override def receive: Receive = {
     case ActorIdentity(serverPath: String, actorOpt) ⇒ fulfillOutstandingIdentify(serverPath, actorOpt)
 
     case Terminated(deadServerActor) ⇒
@@ -172,7 +171,7 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
           }
 
           val clientProxy = getClientProxy(bridgeId)
-          getServerActor(bridgeId) onSuccess {
+          getServerActor(bridgeId) foreach {
             case Some(serverActor) ⇒ dispatchIncomingMessage(msg, clientProxy, serverActor)
 
             case None ⇒ sendMessageToClient(ServerActorNotFound(bridgeId))
@@ -181,8 +180,8 @@ trait ServerBridgeActor[PickleTo] extends Actor with ActorLogging {
         case FindServerActor(bridgeId) ⇒
           import context.dispatcher
 
-          getServerActor(bridgeId) onSuccess {
-            case Some(serverActor) ⇒ sendMessageToClient(ServerActorFound(bridgeId))
+          getServerActor(bridgeId) foreach {
+            case Some(_) ⇒ sendMessageToClient(ServerActorFound(bridgeId))
 
             case None ⇒ sendMessageToClient(ServerActorNotFound(bridgeId))
           }
