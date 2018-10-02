@@ -7,13 +7,12 @@
  */
 package jsactor.bridge.client
 
-import jsactor.RippedFromAkka.base64
-import jsactor._
+import akka.actor._
+import akka.util.Helpers
 import jsactor.bridge.client.SocketManager.Events._
 import jsactor.bridge.client.SocketManager.InternalMessages.Connected
 import jsactor.bridge.client.SocketManager._
 import jsactor.bridge.protocol.BridgeProtocol
-import jsactor.logging.JsActorLogging
 import scala.concurrent.duration._
 
 /**
@@ -23,14 +22,14 @@ import scala.concurrent.duration._
 object SocketManager {
   trait Config[BP <: BridgeProtocol[PickleTo], PickleTo] {
     def wsUrl: String
-    def clientBridgeActorProps: (BP) ⇒ JsProps
-    def webSocketActorProps: (String, JsProps) ⇒ JsProps
+    def clientBridgeActorProps: (BP) ⇒ Props
+    def webSocketActorProps: (String, Props) ⇒ Props
     def initialReconnectTime: FiniteDuration
     def maxReconnectTime: FiniteDuration
   }
 
   private object fsm {
-    case class Data(reconnectTime: FiniteDuration, wsActor: Option[JsActorRef])
+    case class Data(reconnectTime: FiniteDuration, wsActor: Option[ActorRef])
   }
 
   object InternalMessages {
@@ -41,7 +40,7 @@ object SocketManager {
     case object SubscribeToEvents
 
     sealed trait SocketManagerEvent
-    case class WebSocketConnected(socket: JsActorRef) extends SocketManagerEvent
+    case class WebSocketConnected(socket: ActorRef) extends SocketManagerEvent
     case object WebSocketDisconnected extends SocketManagerEvent
     case object WebSocketShutdown extends SocketManagerEvent
   }
@@ -49,17 +48,20 @@ object SocketManager {
   private case object TryToConnect
 }
 
-trait SocketManager[BP <: BridgeProtocol[PickleTo], PickleTo] extends JsActor with JsActorLogging {
+//noinspection ActorMutableStateInspection
+trait SocketManager[BP <: BridgeProtocol[PickleTo], PickleTo] extends Actor with ActorLogging {
+  import context.dispatcher
+
   def config: Config[BP, PickleTo]
   implicit def bridgeProtocol: BP
 
-  private val wsActorName = Iterator from 0 map (i ⇒ s"ws${base64(i)}")
+  private val wsActorName = Iterator from 0 map (i ⇒ s"ws${Helpers.base64(i)}")
 
-  private var reconnectTimer = Option.empty[JsCancellable]
+  private var reconnectTimer = Option.empty[Cancellable]
 
-  private var subscribers = Set.empty[JsActorRef]
+  private var subscribers = Set.empty[ActorRef]
 
-  override def preStart() = {
+  override def preStart(): Unit = {
     super.preStart()
 
     self ! TryToConnect
@@ -83,7 +85,7 @@ trait SocketManager[BP <: BridgeProtocol[PickleTo], PickleTo] extends JsActor wi
       newTime.toCoarsest).asInstanceOf[FiniteDuration]
   }
 
-  private def scheduleReconnectTry(currReconnTime: FiniteDuration, data: fsm.Data) = {
+  private def scheduleReconnectTry(currReconnTime: FiniteDuration, data: fsm.Data): Unit = {
     updateSubscribers(WebSocketDisconnected)
 
     log.debug(s"Trying to connect in ${currReconnTime.toMillis.millis.toCoarsest}")
@@ -91,11 +93,11 @@ trait SocketManager[BP <: BridgeProtocol[PickleTo], PickleTo] extends JsActor wi
     context become disconnected(data.copy(reconnectTime = nextReconnectTime(currReconnTime), wsActor = None))
   }
 
-  private def updateSubscribers(msg: SocketManagerEvent) = {
+  private def updateSubscribers(msg: SocketManagerEvent): Unit = {
     subscribers foreach (_ ! msg)
   }
 
-  private def addSubscriber(currState: SocketManagerEvent) = {
+  private def addSubscriber(currState: SocketManagerEvent): Unit = {
     subscribers += sender()
     context watch sender()
     sender() ! currState
@@ -105,34 +107,35 @@ trait SocketManager[BP <: BridgeProtocol[PickleTo], PickleTo] extends JsActor wi
     case SubscribeToEvents ⇒
       addSubscriber(data.wsActor.fold[SocketManagerEvent](WebSocketDisconnected)(WebSocketConnected))
 
-    case JsTerminated(act) if subscribers(act) ⇒ subscribers -= act
+    case Terminated(act) if subscribers(act) ⇒ subscribers -= act
   }
 
-  def receive = JsActor.emptyBehavior
+  override def receive: Receive = Actor.emptyBehavior
 
-  def disconnected(data: fsm.Data): Receive = handleSubs(data) orElse {
+  private def disconnected(data: fsm.Data): Receive = handleSubs(data) orElse {
     case TryToConnect ⇒
-      val wsActor = context.actorOf(config.webSocketActorProps(config.wsUrl, config.clientBridgeActorProps(bridgeProtocol)), wsActorName.next())
+      val props = config.webSocketActorProps(config.wsUrl, config.clientBridgeActorProps(bridgeProtocol))
+      val wsActor = context.actorOf(props, wsActorName.next())
       context watch wsActor
       context become disconnected(data.copy(wsActor = Some(wsActor)))
 
-    case JsTerminated(actor) ⇒
+    case Terminated(actor) ⇒
       if (data.wsActor contains actor) {
-        log.trace("failed to connect")
+        log.debug("failed to connect")
 
         scheduleReconnectTry(data.reconnectTime, data)
       }
 
     case Connected ⇒
-      log.trace("Connected")
+      log.debug("Connected")
       data.wsActor map WebSocketConnected foreach updateSubscribers
       context become connected(data.copy(reconnectTime = config.initialReconnectTime))
   }
 
-  def connected(data: fsm.Data): Receive = handleSubs(data) orElse {
-    case JsTerminated(actor) ⇒
+  private def connected(data: fsm.Data): Receive = handleSubs(data) orElse {
+    case Terminated(actor) ⇒
       if (data.wsActor contains actor) {
-        log.trace("Disconnected")
+        log.debug("Disconnected")
 
         scheduleReconnectTry(config.initialReconnectTime, data)
       }
@@ -140,7 +143,7 @@ trait SocketManager[BP <: BridgeProtocol[PickleTo], PickleTo] extends JsActor wi
 }
 
 trait WebSocketManager {
-  def socketManager: JsActorRef
+  def socketManager: ActorRef
 
-  def subscribeToEvents(implicit subscriber: JsActorRef) = socketManager ! SocketManager.Events.SubscribeToEvents
+  def subscribeToEvents(implicit subscriber: ActorRef): Unit = socketManager ! SocketManager.Events.SubscribeToEvents
 }

@@ -7,9 +7,9 @@
  */
 package jsactor.bridge.client
 
+import akka.actor.{ActorRef, ActorRefFactory, Props}
 import jsactor.bridge.client.UPickleSocketManager.Config
 import jsactor.bridge.protocol.UPickleBridgeProtocol
-import jsactor.{JsActorRefFactory, JsProps}
 import scala.concurrent.duration._
 
 /**
@@ -17,13 +17,12 @@ import scala.concurrent.duration._
   *
   */
 object UPickleSocketManager {
-    def props(config: UPickleSocketManager.Config)(implicit bridgeProtocol: UPickleBridgeProtocol) = {
-      JsProps(new UPickleSocketManager(config))
-    }
+    def props(config: UPickleSocketManager.Config)(implicit bridgeProtocol: UPickleBridgeProtocol) =
+      Props(new UPickleSocketManager(config))
 
   case class Config(wsUrl: String,
-                    clientBridgeActorProps: (UPickleBridgeProtocol) ⇒ JsProps = UPickleClientBridgeActor.props(_),
-                    webSocketActorProps: (String, JsProps) ⇒ JsProps = WebSocketActor.props,
+                    clientBridgeActorProps: (UPickleBridgeProtocol) ⇒ Props = UPickleClientBridgeActor.props(_),
+                    webSocketActorProps: (String, Props) ⇒ Props = WebSocketActor.props,
                     initialReconnectTime: FiniteDuration = 125.millis,
                     maxReconnectTime: FiniteDuration = 4.seconds) extends SocketManager.Config[UPickleBridgeProtocol, String]
 
@@ -33,7 +32,7 @@ class UPickleSocketManager(val config: Config)
                           (implicit val bridgeProtocol: UPickleBridgeProtocol) extends SocketManager[UPickleBridgeProtocol, String]
 
 class UPickleWebSocketManager(config: UPickleSocketManager.Config, name: String = "socketManager")
-                             (implicit arf: JsActorRefFactory, bridgeProtocol: UPickleBridgeProtocol)
+                             (implicit arf: ActorRefFactory, bridgeProtocol: UPickleBridgeProtocol)
   extends WebSocketManager {
-  val socketManager = arf.actorOf(UPickleSocketManager.props(config), name)
+  val socketManager: ActorRef = arf.actorOf(UPickleSocketManager.props(config), name)
 }

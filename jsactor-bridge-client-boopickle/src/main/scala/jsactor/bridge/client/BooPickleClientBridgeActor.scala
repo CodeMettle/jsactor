@@ -7,7 +7,7 @@
  */
 package jsactor.bridge.client
 
-import jsactor.JsProps
+import akka.actor.Props
 import jsactor.bridge.client.WebSocketActor.WebSocketSendable
 import jsactor.bridge.protocol.{BooPickleBridgeProtocol, BooPickleProtocolPickler}
 import scala.reflect.ClassTag
@@ -19,7 +19,7 @@ import scala.scalajs.js
   */
 object BooPickleClientBridgeActor {
   def props(implicit bridgeProtocol: BooPickleBridgeProtocol) =
-    JsProps(new BooPickleClientBridgeActor)
+    Props(new BooPickleClientBridgeActor)
 }
 
 class BooPickleClientBridgeActor(implicit val bridgeProtocol: BooPickleBridgeProtocol)

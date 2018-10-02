@@ -7,9 +7,9 @@
  */
 package jsactor.bridge.client
 
+import akka.actor.{ActorRef, ActorRefFactory, Props}
 import jsactor.bridge.client.CirceSocketManager.Config
 import jsactor.bridge.protocol.CirceBridgeProtocol
-import jsactor.{JsActorRefFactory, JsProps}
 import scala.concurrent.duration._
 
 /**
@@ -18,11 +18,11 @@ import scala.concurrent.duration._
   */
 object CirceSocketManager {
   def props(config: CirceSocketManager.Config)(implicit bridgeProtocol: CirceBridgeProtocol) =
-    JsProps(new CirceSocketManager(config))
+    Props(new CirceSocketManager(config))
 
   case class Config(wsUrl: String,
-                    clientBridgeActorProps: (CirceBridgeProtocol) ⇒ JsProps = CirceClientBridgeActor.props(_),
-                    webSocketActorProps: (String, JsProps) ⇒ JsProps = WebSocketActor.props,
+                    clientBridgeActorProps: (CirceBridgeProtocol) ⇒ Props = CirceClientBridgeActor.props(_),
+                    webSocketActorProps: (String, Props) ⇒ Props = WebSocketActor.props,
                     initialReconnectTime: FiniteDuration = 125.millis,
                     maxReconnectTime: FiniteDuration = 4.seconds) extends SocketManager.Config[CirceBridgeProtocol, String]
 
@@ -32,7 +32,7 @@ class CirceSocketManager(val config: Config)
                         (implicit val bridgeProtocol: CirceBridgeProtocol) extends SocketManager[CirceBridgeProtocol, String]
 
 class CirceWebSocketManager(config: CirceSocketManager.Config, name: String = "socketManager")
-                           (implicit arf: JsActorRefFactory,
+                           (implicit arf: ActorRefFactory,
                             bridgeProtocol: CirceBridgeProtocol) extends WebSocketManager {
-  val socketManager = arf.actorOf(CirceSocketManager.props(config), name)
+  val socketManager: ActorRef = arf.actorOf(CirceSocketManager.props(config), name)
 }

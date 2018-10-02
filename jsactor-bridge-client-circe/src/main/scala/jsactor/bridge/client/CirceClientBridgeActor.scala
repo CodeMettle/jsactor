@@ -7,7 +7,7 @@
  */
 package jsactor.bridge.client
 
-import jsactor.JsProps
+import akka.actor.Props
 import jsactor.bridge.client.WebSocketActor.WebSocketSendable
 import jsactor.bridge.protocol.{CirceBridgeProtocol, CirceProtocolPickler}
 import scala.reflect.ClassTag
@@ -18,7 +18,7 @@ import scala.reflect.ClassTag
   */
 object CirceClientBridgeActor {
   def props(implicit bridgeProtocol: CirceBridgeProtocol) =
-    JsProps(new CirceClientBridgeActor)
+    Props(new CirceClientBridgeActor)
 }
 
 class CirceClientBridgeActor(implicit val bridgeProtocol: CirceBridgeProtocol)

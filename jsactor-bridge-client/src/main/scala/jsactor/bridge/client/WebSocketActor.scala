@@ -9,12 +9,11 @@ package jsactor.bridge.client
 
 import org.scalajs.dom
 
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import jsactor.bridge.client.WebSocketActor.InternalMessages.SendPickledMessageThroughWebsocket
 import jsactor.bridge.client.WebSocketActor.Messages.{IdentifyServerActor, MessageReceived, SendMessageToServer}
 import jsactor.bridge.client.WebSocketActor.WebSocketSendable._
 import jsactor.bridge.client.WebSocketActor.{OnClose, OnError, OnMessage, OnOpen}
-import jsactor.logging.JsActorLogging
-import jsactor.{JsActor, JsActorRef, JsProps}
 import scala.scalajs.js
 
 /**
@@ -22,9 +21,8 @@ import scala.scalajs.js
  *
  */
 object WebSocketActor {
-  def props(wsUrl: String, clientBridgeActorProps: JsProps) = {
-    JsProps(new WebSocketActor(wsUrl, clientBridgeActorProps))
-  }
+  def props(wsUrl: String, clientBridgeActorProps: Props) =
+    Props(new WebSocketActor(wsUrl, clientBridgeActorProps))
 
   object Messages {
     case class MessageReceived(data: Any)
@@ -36,7 +34,7 @@ object WebSocketActor {
 
   object InternalMessages {
     case class SendPickledMessageThroughWebsocket[T : WebSocketSendable](msg: T) {
-      def send(ws: dom.WebSocket) = ws send msg
+      def send(ws: dom.WebSocket): Unit = ws send msg
     }
   }
 
@@ -67,20 +65,21 @@ object WebSocketActor {
       }
     }
     implicit class WSSWebSocket(val ws: dom.WebSocket) extends AnyVal {
-      def send[T : WebSocketSendable](msg: T) = implicitly[WebSocketSendable[T]].send(ws, msg)
+      def send[T : WebSocketSendable](msg: T): Unit = implicitly[WebSocketSendable[T]].send(ws, msg)
     }
   }
 }
 
-class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsActor with JsActorLogging {
+//noinspection ActorMutableStateInspection
+class WebSocketActor(wsUrl: String, clientBridgeActorProps: Props) extends Actor with ActorLogging {
   private var webSocketOpt = Option.empty[dom.WebSocket]
 
-  private var bridgeActor = Option.empty[JsActorRef]
+  private var bridgeActor = Option.empty[ActorRef]
 
-  override def preStart() = {
+  override def preStart(): Unit = {
     super.preStart()
 
-    log.trace(s"Attempting to connect to $wsUrl")
+    log.debug(s"Attempting to connect to $wsUrl")
 
     val webSocket = new dom.WebSocket(wsUrl)
     webSocket.binaryType = "arraybuffer"
@@ -92,7 +91,7 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
     webSocketOpt = Some(webSocket)
   }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     super.postStop()
 
     log.info("WebSocket shutting down")
@@ -100,31 +99,29 @@ class WebSocketActor(wsUrl: String, clientBridgeActorProps: JsProps) extends JsA
     webSocketOpt foreach (_.close())
   }
 
-  def receive = {
+  override def receive: Receive = {
     case sendMsg: SendMessageToServer ⇒ bridgeActor foreach (_ forward sendMsg)
 
     case identify: IdentifyServerActor ⇒ bridgeActor foreach (_ forward identify)
 
     case spm: SendPickledMessageThroughWebsocket[_] ⇒ webSocketOpt foreach spm.send
 
-    case OnOpen(evt) ⇒
-      log.info("WebSocket connected to", wsUrl)
-      log.trace(evt)
+    case OnOpen(_) ⇒
+      log.info("WebSocket connected to {}", wsUrl)
 
       bridgeActor = Some(context.actorOf(clientBridgeActorProps, "bridgeActor"))
 
       context.parent ! SocketManager.InternalMessages.Connected
 
     case OnError(errEvt) ⇒
-      log.error(errEvt)
+      log.error("Error: {}", errEvt.message)
       context stop self
 
     case OnClose(evt) ⇒
-      log.warn(evt)
+      log.warning("Closed: {}", evt.reason)
       context stop self
 
     case OnMessage(evt) ⇒
-      log.trace(evt)
       bridgeActor foreach (_ ! MessageReceived(evt.data))
   }
 }

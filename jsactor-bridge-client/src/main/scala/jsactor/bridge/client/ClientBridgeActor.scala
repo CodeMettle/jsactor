@@ -7,11 +7,10 @@
  */
 package jsactor.bridge.client
 
-import jsactor._
+import akka.actor.{Actor, ActorLogging, ActorPath, ActorRef, Props, Status, Terminated}
 import jsactor.bridge.client.ClientBridgeActor.{SendMessageToServer, ServerActorProxy}
 import jsactor.bridge.client.WebSocketActor.WebSocketSendable
 import jsactor.bridge.protocol._
-import jsactor.logging.JsActorLogging
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
@@ -20,28 +19,27 @@ import scala.util.{Failure, Success, Try}
  *
  */
 object ClientBridgeActor {
-  private class ServerActorProxy(serverPath: String) extends JsActor with JsActorLogging {
+  private class ServerActorProxy(serverPath: String) extends Actor with ActorLogging {
     override def preStart(): Unit = {
       super.preStart()
 
-      log.trace(s"${self.path} created for serverActor $serverPath")
+      log.debug(s"${self.path} created for serverActor $serverPath")
     }
 
-    def receive = {
+    override def receive: Receive = {
       case msg ⇒ context.parent ! SendMessageToServer(sender().path, serverPath, sender(), msg)
     }
   }
 
   private object ServerActorProxy {
-    def props(serverPath: String) = {
-      JsProps(new ServerActorProxy(serverPath))
-    }
+    def props(serverPath: String) = Props(new ServerActorProxy(serverPath))
   }
 
-  private case class SendMessageToServer(clientPath: JsActorPath, serverPath: String, clientActor: JsActorRef, message: Any)
+  private case class SendMessageToServer(clientPath: ActorPath, serverPath: String, clientActor: ActorRef, message: Any)
 }
 
-trait ClientBridgeActor[PickleTo, RecvType] extends JsActor with JsActorLogging {
+//noinspection ActorMutableStateInspection
+trait ClientBridgeActor[PickleTo, RecvType] extends Actor with ActorLogging {
   import scala.language.implicitConversions
   protected implicit def pickleWSS: WebSocketSendable[PickleTo]
   protected implicit def recvCT: ClassTag[RecvType]
@@ -53,23 +51,23 @@ trait ClientBridgeActor[PickleTo, RecvType] extends JsActor with JsActorLogging 
 
   private val protocolPickler = newProtocolPickler
 
-  private var serverProxies = Map.empty[String, JsActorRef]
+  private var serverProxies = Map.empty[String, ActorRef]
 
-  private var clientActors = Map.empty[String, JsActorRef]
+  private var clientActors = Map.empty[String, ActorRef]
 
-  private def getServerProxy(bridgeId: BridgeId): JsActorRef = serverProxies.getOrElse(bridgeId.serverPath, {
+  private def getServerProxy(bridgeId: BridgeId): ActorRef = serverProxies.getOrElse(bridgeId.serverPath, {
     val actor = context.actorOf(ServerActorProxy.props(bridgeId.serverPath))
     serverProxies += (bridgeId.serverPath → actor)
     actor
   })
 
-  private def sendMessageToServer(pm: ProtocolMessage) = {
+  private def sendMessageToServer(pm: ProtocolMessage): Unit = {
     context.parent ! WebSocketActor.InternalMessages.SendPickledMessageThroughWebsocket(protocolPickler pickle pm)
   }
 
-  private def sendMessageToServer(clientPath: String, serverPath: String, message: Any) = {
+  private def sendMessageToServer(clientPath: String, serverPath: String, message: Any): Unit = {
     val msg = message match {
-      case JsStatus.Failure(t) ⇒ StatusFailure(t)
+      case Status.Failure(t) ⇒ StatusFailure(t)
       case _ ⇒ message
     }
 
@@ -83,7 +81,7 @@ trait ClientBridgeActor[PickleTo, RecvType] extends JsActor with JsActorLogging 
     }
   }
 
-  private def registerClient(clientActor: JsActorRef) = {
+  private def registerClient(clientActor: ActorRef): Unit = {
     val clientPath = clientActor.path.toString
     if (!clientActors.contains(clientPath)) {
       context watch clientActor
@@ -91,9 +89,9 @@ trait ClientBridgeActor[PickleTo, RecvType] extends JsActor with JsActorLogging 
     }
   }
 
-  def receive = {
-    case JsTerminated(deadClientActor) ⇒
-      clientActors = (Map.empty[String, JsActorRef] /: clientActors) {
+  override def receive: Receive = {
+    case Terminated(deadClientActor) ⇒
+      clientActors = (Map.empty[String, ActorRef] /: clientActors) {
         case (acc, (clientPath, clientActor)) if clientActor == deadClientActor ⇒
           sendMessageToServer(ClientActorTerminated(clientPath))
           acc
@@ -120,11 +118,11 @@ trait ClientBridgeActor[PickleTo, RecvType] extends JsActor with JsActorLogging 
         case Success(msg) ⇒ msg match {
           case ServerToClientMessage(bridgeId, message) ⇒
             clientActors get bridgeId.clientPath match {
-              case None ⇒ log.warn(s"Dropping $msg since client actor seems to have died")
+              case None ⇒ log.warning(s"Dropping $msg since client actor seems to have died")
 
               case Some(clientActor) ⇒
                 val msg = message match {
-                  case StatusFailure(t) ⇒ JsStatus.Failure(t)
+                  case StatusFailure(t) ⇒ Status.Failure(t)
                   case _ ⇒ message
                 }
 
@@ -141,7 +139,7 @@ trait ClientBridgeActor[PickleTo, RecvType] extends JsActor with JsActorLogging 
 
           case sanf@ServerActorNotFound(bridgeId) ⇒ clientActors get bridgeId.clientPath foreach (_ ! sanf)
 
-          case _ ⇒ log.warn(s"Unknown message: $msg")
+          case _ ⇒ log.warning(s"Unknown message: $msg")
         }
       }
 

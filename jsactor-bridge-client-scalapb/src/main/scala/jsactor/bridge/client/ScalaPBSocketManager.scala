@@ -7,7 +7,7 @@
  */
 package jsactor.bridge.client
 
-import jsactor.{JsActorRef, JsActorRefFactory, JsProps}
+import akka.actor.{ActorRef, ActorRefFactory, Props}
 import jsactor.bridge.client.ScalaPBSocketManager.Config
 import jsactor.bridge.protocol.ScalaPBBridgeProtocol
 import scala.concurrent.duration._
@@ -17,11 +17,11 @@ import scala.concurrent.duration._
   */
 object ScalaPBSocketManager {
   def props(config: Config)(implicit bridgeProtocol: ScalaPBBridgeProtocol) =
-    JsProps(new ScalaPBSocketManager(config))
+    Props(new ScalaPBSocketManager(config))
 
   case class Config(wsUrl: String,
-                    clientBridgeActorProps: (ScalaPBBridgeProtocol) ⇒ JsProps = ScalaPBClientBridgeActor.props(_),
-                    webSocketActorProps: (String, JsProps) ⇒ JsProps = WebSocketActor.props,
+                    clientBridgeActorProps: (ScalaPBBridgeProtocol) ⇒ Props = ScalaPBClientBridgeActor.props(_),
+                    webSocketActorProps: (String, Props) ⇒ Props = WebSocketActor.props,
                     initialReconnectTime: FiniteDuration = 125.millis, maxReconnectTime: FiniteDuration = 4.seconds)
     extends SocketManager.Config[ScalaPBBridgeProtocol, Array[Byte]]
 }
@@ -31,7 +31,7 @@ class ScalaPBSocketManager(val config: Config)
   extends SocketManager[ScalaPBBridgeProtocol, Array[Byte]]
 
 class ScalaPBWebSocketManager(config: Config, name: String = "socketManager")
-                               (implicit arf: JsActorRefFactory, bridgeProtocol: ScalaPBBridgeProtocol)
+                               (implicit arf: ActorRefFactory, bridgeProtocol: ScalaPBBridgeProtocol)
   extends WebSocketManager {
-  val socketManager: JsActorRef = arf.actorOf(ScalaPBSocketManager.props(config), name)
+  val socketManager: ActorRef = arf.actorOf(ScalaPBSocketManager.props(config), name)
 }

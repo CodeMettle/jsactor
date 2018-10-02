@@ -7,11 +7,10 @@
  */
 package jsactor.bridge.client.util
 
-import jsactor._
+import akka.actor._
 import jsactor.bridge.client.util.UntypedRemoteActorListener.TryConnect
 import jsactor.bridge.client.{SocketManager, WebSocketActor, WebSocketManager}
 import jsactor.bridge.protocol.{ServerActorFound, ServerActorNotFound}
-import jsactor.logging.JsActorLogging
 import scala.concurrent.duration._
 
 /**
@@ -22,25 +21,26 @@ object UntypedRemoteActorListener {
   private case object TryConnect
 }
 
-trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLogging {
+//noinspection ActorMutableStateInspection
+trait UntypedRemoteActorListener extends Actor with Stash with ActorLogging {
   def actorPath: String
-  def wsManager: JsActorRef
-  def onConnect(serverActor: JsActorRef): Unit
-  def whenConnected(serverActor: JsActorRef): Receive
+  def wsManager: ActorRef
+  def onConnect(serverActor: ActorRef): Unit
+  def whenConnected(serverActor: ActorRef): Receive
   def retryTimeout: FiniteDuration = 2.seconds
-  protected def onDisconnect() = {}
+  protected def onDisconnect(): Unit = {}
 
-  private var websocket = Option.empty[JsActorRef]
+  private var websocket = Option.empty[ActorRef]
 
-  private var serverActor = Option.empty[JsActorRef]
+  private var serverActor = Option.empty[ActorRef]
 
-  override def preStart() = {
+  override def preStart(): Unit = {
     super.preStart()
 
     wsManager ! SocketManager.Events.SubscribeToEvents
   }
 
-  final def receive = {
+  override final def receive: Receive = {
     case SocketManager.Events.WebSocketConnected(socket) ⇒
       websocket = Some(socket)
       self ! TryConnect
@@ -49,16 +49,16 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
       context setReceiveTimeout retryTimeout
       websocket foreach (_ ! WebSocketActor.Messages.IdentifyServerActor(actorPath))
 
-    case JsReceiveTimeout ⇒
-      log.warn("No response from server when trying to send message to ", actorPath)
+    case ReceiveTimeout ⇒
+      log.warning("No response from server when trying to send message to {}", actorPath)
       self ! TryConnect
 
     case ServerActorNotFound(_) ⇒
-      log.warn("No actor returned from server for ", actorPath)
+      log.warning("No actor returned from server for {}", actorPath)
 
     case ServerActorFound(_) ⇒
       val act = sender()
-      log.trace("Got actor ", act.toString, " for ", actorPath)
+      log.debug("Got actor {} for {}", act, actorPath)
       serverActor = Some(act)
       context watch act
       context setReceiveTimeout Duration.Undefined
@@ -71,23 +71,23 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
 
       websocket = None
 
-    case _: JsTerminated ⇒ // already disconnected from websocketdisconnect
+    case _: Terminated ⇒ // already disconnected from websocketdisconnect
 
-    case msg ⇒ stash()
+    case _ ⇒ stash()
   }
 
   private def listenForDisconnects: Receive = {
-    case JsTerminated(act) if serverActor contains act ⇒
-      log.trace("Server actor ", act.toString, " terminated")
+    case Terminated(act) if serverActor contains act ⇒
+      log.debug("Server actor {} terminated", act)
       serverActor = None
       context become receive
       self ! TryConnect
       onDisconnect()
 
-    case JsTerminated(act) ⇒ log.warn(s"Received notification of unknown actor $act")
+    case Terminated(act) ⇒ log.warning(s"Received notification of unknown actor $act")
 
     case SocketManager.Events.WebSocketDisconnected | SocketManager.Events.WebSocketShutdown ⇒
-      log.trace("WebSocket disconnected")
+      log.debug("WebSocket disconnected")
       serverActor = None
       websocket = None
       context become receive
@@ -97,5 +97,5 @@ trait UntypedRemoteActorListener extends JsActor with JsStash with JsActorLoggin
 
 trait RemoteActorListener extends UntypedRemoteActorListener {
   def webSocketManager: WebSocketManager
-  final override def wsManager = webSocketManager.socketManager
+  final override def wsManager: ActorRef = webSocketManager.socketManager
 }

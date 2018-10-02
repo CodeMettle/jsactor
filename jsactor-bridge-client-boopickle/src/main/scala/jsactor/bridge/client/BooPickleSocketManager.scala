@@ -7,9 +7,9 @@
  */
 package jsactor.bridge.client
 
+import akka.actor.{ActorRef, ActorRefFactory, Props}
 import jsactor.bridge.client.BooPickleSocketManager.Config
 import jsactor.bridge.protocol.BooPickleBridgeProtocol
-import jsactor.{JsActorRefFactory, JsProps}
 import scala.concurrent.duration._
 
 /**
@@ -18,11 +18,11 @@ import scala.concurrent.duration._
   */
 object BooPickleSocketManager {
   def props(config: Config)(implicit bridgeProtocol: BooPickleBridgeProtocol) =
-    JsProps(new BooPickleSocketManager(config))
+    Props(new BooPickleSocketManager(config))
 
   case class Config(wsUrl: String,
-                    clientBridgeActorProps: (BooPickleBridgeProtocol) ⇒ JsProps = BooPickleClientBridgeActor.props(_),
-                    webSocketActorProps: (String, JsProps) ⇒ JsProps = WebSocketActor.props,
+                    clientBridgeActorProps: (BooPickleBridgeProtocol) ⇒ Props = BooPickleClientBridgeActor.props(_),
+                    webSocketActorProps: (String, Props) ⇒ Props = WebSocketActor.props,
                     initialReconnectTime: FiniteDuration = 125.millis, maxReconnectTime: FiniteDuration = 4.seconds)
     extends SocketManager.Config[BooPickleBridgeProtocol, Array[Byte]]
 }
@@ -32,7 +32,7 @@ class BooPickleSocketManager(val config: Config)
   extends SocketManager[BooPickleBridgeProtocol, Array[Byte]]
 
 class BooPickleWebSocketManager(config: Config, name: String = "socketManager")
-                               (implicit arf: JsActorRefFactory, bridgeProtocol: BooPickleBridgeProtocol)
+                               (implicit arf: ActorRefFactory, bridgeProtocol: BooPickleBridgeProtocol)
   extends WebSocketManager {
-  val socketManager = arf.actorOf(BooPickleSocketManager.props(config), name)
+  val socketManager: ActorRef = arf.actorOf(BooPickleSocketManager.props(config), name)
 }
