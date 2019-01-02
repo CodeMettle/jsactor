@@ -21,66 +21,15 @@ hierarchy, a well-defined lifecycle, an `EventStream`, and so on.
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.codemettle.jsactor" %%% "jsactor" % "0.7.1",
-  "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.7.1" // if using jsactor-bridge
-  "com.codemettle.jsactor" %%% "jsactor-loglevel" % "0.7.1" // to use the LogLevel logging adapter
+  "com.codemettle.jsactor" %%% "jsactor" % "0.8.0",
+  "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.8.0" // if using jsactor-bridge
+  "com.codemettle.jsactor" %%% "jsactor-loglevel" % "0.8.0" // to use the LogLevel logging adapter
 )
 ```
 
 # Usage
 
-### Create ActorSystem
-
-```scala
-import jsactor.JsActorSystem
-import jsactor.logging.impl.JsLoglevelActorLoggerFactory
-
-// logging defaults to scala.js println statements, this is using LogLevel; JsNullActorLoggerFactory also exists
-val system = JsActorSystem("mySystemName", JsLoglevelActorLoggerFactory)
-```
-
-### Create an Actor
-
-```scala
-val system: JsActorSystem = ???
-
-class MyActor extends JsActor with JsActorLogging {
-  override def preStart() = {
-    super.preStart()
-
-    log.info(s"$self is starting at ${self.path}")
-  }
-
-  override def receive = JsActor.emptyBehavior
-}
-
-val myactor = system.actorOf(JsProps(new MyActor), "myactor")
-
-myactor ! MyMessage()
-```
-
-### More usage
-
-A lot of stuff you expect from Akka exists with pretty much the same signatures; this includes `context.system.eventStream`,
-`context.actorOf()`, `sender()`, `?` (import `jsactor.pattern.ask`), `context watch actor` (with `JsTerminated` messages),
-`JsActor with JsStash`, `context.setReceiveTimeout` (with `JsReceiveTimeout` messages), etc.
-
-### What's missing?
-
-Probably the feature you need.
-
-In all seriousness, most of the basic functionality of vanilla akka-actor is there.
-
-#### Supervision
-
-Supervision probably wouldn't be hard to write, but I haven't had a need for it. Most of the code that isn't straight
-from Akka is comprised of ugly hacks and casts and "just barely works on my box"isms, and that probably makes
-supervision harder to implement than it should be.
-
-#### FSM
-
-I copied the FSM trait straight from Akka, but it has strange runtime errors. This is probably the biggest hole that I
-personally care about; hopefully I'll have time to look at it again someday.
+(deleted JsActor section since it's now gone in favor of Akka.JS)
 
 # Server-client Interop
 
@@ -97,7 +46,7 @@ objects change then the server pushes them.
 ```scala
 // project with model classes shared between client & server, cross-compiled to JVM & JS
  ...
-libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-shared" % "0.7.1"
+libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-shared" % "0.8.0"
  ...
 ```
 
@@ -134,7 +83,7 @@ object MyProjectProtocol extends BridgeProtocol {
 ```scala
 // server project; also needs to depend on the shared model project
  ...
-libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-server" % "0.7.1"
+libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-server" % "0.8.0"
  ...
 ```
 
@@ -172,7 +121,7 @@ object MyController extends Controller {
 ```scala
 // client project; also needs to depend on the shared model project
  ...
-libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.7.1"
+libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0.8.0"
  ...
 ```
 
@@ -180,12 +129,12 @@ libraryDependencies += "com.codemettle.jsactor" %%% "jsactor-bridge-client" % "0
  classes can be replaced with your own, but it's easiest to use `jsactor.bridge.client.{ClientBridgeActor, SocketManager, WebSocketActor}`.
 
 ```scala
-  val actorSystem: JsActorSystem = ???
+  val actorSystem: ActorSystem = ???
 
   private implicit val bridgeProtocal = MyProjectProtocol
   val wsManager = actorSystem.actorOf(SocketManager.props(SocketManager.Config("ws://localhost:9000/ws"), "socketManager")
 
-  class MyActor extends JsActor {
+  class MyActor extends Actor {
     override def preStart() = {
       super.preStart()
 
@@ -218,14 +167,14 @@ automatically start trying to `Identify` a server-side actor when the websocket 
 ```scala
 import jsactor.bridge.client.util.RemoteActorListener
 
-class MyClientActor(val wsManager: JsActorRef) extends RemoteActorListener {
+class MyClientActor(val wsManager: ActorRef) extends RemoteActorListener {
   def actorPath = "/user/MyServerActor"
 
-  def onConnect(serverActor: JsActorRef) = {
+  def onConnect(serverActor: ActorRef) = {
     serverActor ! MyRegisteredMessage
   }
 
-  def whenConnected(serverActor: JsActorRef) = {
+  def whenConnected(serverActor: ActorRef) = {
     case RegisteredMessageFromServer(param) => log.info(s"got $param from server")
     case msg@RegisteredMessageFromClient => serverActor forward msg
   }
