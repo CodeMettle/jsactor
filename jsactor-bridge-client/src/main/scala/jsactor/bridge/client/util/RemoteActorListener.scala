@@ -34,6 +34,8 @@ trait UntypedRemoteActorListener extends Actor with Stash with ActorLogging {
 
   private var serverActor = Option.empty[ActorRef]
 
+  private var hasWatched = Set.empty[ActorRef]
+
   override def preStart(): Unit = {
     super.preStart()
 
@@ -61,6 +63,7 @@ trait UntypedRemoteActorListener extends Actor with Stash with ActorLogging {
       log.debug("Got actor {} for {}", act, actorPath)
       serverActor = Some(act)
       context watch act
+      hasWatched += act
       context setReceiveTimeout Duration.Undefined
       onConnect(act)
       context become (listenForDisconnects orElse whenConnected(act))
@@ -79,12 +82,13 @@ trait UntypedRemoteActorListener extends Actor with Stash with ActorLogging {
   private def listenForDisconnects: Receive = {
     case Terminated(act) if serverActor contains act ⇒
       log.debug("Server actor {} terminated", act)
+      hasWatched -= act
       serverActor = None
       context become receive
       self ! TryConnect
       onDisconnect()
 
-    case Terminated(act) ⇒ log.warning(s"Received notification of unknown actor $act")
+    case Terminated(act) if hasWatched contains act ⇒ hasWatched -= act
 
     case SocketManager.Events.WebSocketDisconnected | SocketManager.Events.WebSocketShutdown ⇒
       log.debug("WebSocket disconnected")
